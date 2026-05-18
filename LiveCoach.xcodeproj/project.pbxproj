@@ -15,6 +15,7 @@
 		6A912F079E92D26766376D86 /* User.swift in Sources */ = {isa = PBXBuildFile; fileRef = 167F5653C4168D0A768B93EF /* User.swift */; };
 		803EDE962427B3947FA58A3E /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = AB805B6A027AB64244A6A997 /* GoogleSignIn */; };
 		91A4F403204812188D1080A0 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 1DEBC0CA0702C700494614B5 /* FirebaseAuth */; };
+		94A3A9EF61AFC8450B867373 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D284C5D514781BCE196E69D /* Constants.swift */; };
 		AE98CAAE765D6F1EDC5B648A /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 2AE1CD37922BE4C9F88F1871 /* FirebaseMessaging */; };
 		C78816C9A695E143D2A5A329 /* Conversation.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF2E7D1997178DD4C717C0B5 /* Conversation.swift */; };
 		CBA232834DFAE2890C941428 /* Project.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA0E5C80AA83C8E8302D501A /* Project.swift */; };
@@ -34,6 +35,7 @@
 
 /* Begin PBXFileReference section */
 		167F5653C4168D0A768B93EF /* User.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = User.swift; sourceTree = "<group>"; };
+		1D284C5D514781BCE196E69D /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
 		22DDC3D419E5BB940DA6DBF0 /* LiveCoachTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveCoachTests.swift; sourceTree = "<group>"; };
 		2DE7FE3BEC18CA693E73614C /* DailySession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailySession.swift; sourceTree = "<group>"; };
 		3E65E7783076EADD9ABE8F94 /* LiveCoach.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LiveCoach.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -79,6 +81,7 @@
 		566AFE89287BE65896F4369A /* Shared */ = {
 			isa = PBXGroup;
 			children = (
+				1D284C5D514781BCE196E69D /* Constants.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -303,6 +306,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				94A3A9EF61AFC8450B867373 /* Constants.swift in Sources */,
 				C78816C9A695E143D2A5A329 /* Conversation.swift in Sources */,
 				5B221D6F2F7FD4972A55D5C6 /* DailySession.swift in Sources */,
 				2C861A7451057B5A20ACE2C1 /* LiveCoachApp.swift in Sources */,

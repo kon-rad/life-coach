@@ -23,5 +23,24 @@
         <key>UIApplicationSupportsMultipleScenes</key>
         <false/>
     </dict>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Live Coach uses the microphone for voice check-ins with your AI coach.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>Live Coach transcribes your spoken goal during onboarding.</string>
+    <key>NSUserNotificationUsageDescription</key>
+    <string>Live Coach sends daily coaching reminders.</string>
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>remote-notification</string>
+    </array>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>com.googleusercontent.apps.REPLACE_ME</string>
+            </array>
+        </dict>
+    </array>
 </dict>
 </plist>

@@ -39,4 +39,8 @@ final class ModelTests: XCTestCase {
     func testMessageRoleRawValue() {
         XCTAssertEqual(MessageRole.user.rawValue, "user")
     }
+
+    func testDailyQuotesCount() {
+        XCTAssertEqual(Constants.DailyQuotes.all.count, 20)
+    }
 }
