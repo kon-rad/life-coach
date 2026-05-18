@@ -1,10 +1,21 @@
 import SwiftUI
+import FirebaseCore
+import RevenueCat
 
 @main
 struct LiveCoachApp: App {
+    @State private var appState = AppState()
+
+    init() {
+        guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else { return }
+        FirebaseApp.configure()
+        Purchases.configure(withAPIKey: Constants.revenueCatAPIKey)
+    }
+
     var body: some Scene {
         WindowGroup {
-            Text("Loading")
+            RootView()
+                .environment(appState)
         }
     }
 }

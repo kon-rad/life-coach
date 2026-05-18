@@ -10,9 +10,12 @@
 		2A24B3E9BE494767D49EB821 /* UserStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFB154C4C39ABFA53B2EFAE2 /* UserStats.swift */; };
 		2C861A7451057B5A20ACE2C1 /* LiveCoachApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC98D08ED019866B3B017AF1 /* LiveCoachApp.swift */; };
 		3EA9E02DF52EBE49A54CDE03 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 6DDF4A03C284D79D56E84820 /* RevenueCat */; };
+		3EF5B35CFFCAACC0B3C58DAB /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E28B51B99C7D3900406A190 /* RootView.swift */; };
 		3F6E5D70C291B8D2EE85D944 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7D4CDD05603602B7DD8FFD93 /* Assets.xcassets */; };
 		5B221D6F2F7FD4972A55D5C6 /* DailySession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DE7FE3BEC18CA693E73614C /* DailySession.swift */; };
 		6A912F079E92D26766376D86 /* User.swift in Sources */ = {isa = PBXBuildFile; fileRef = 167F5653C4168D0A768B93EF /* User.swift */; };
+		6AE7357E2C3EA37F2A3C10C6 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 494A6CF88B69BF1410663490 /* AppState.swift */; };
+		78F5D233B47114B3BE3DBB21 /* AppStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E4424D2E1C91B40F94E0124 /* AppStateTests.swift */; };
 		803EDE962427B3947FA58A3E /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = AB805B6A027AB64244A6A997 /* GoogleSignIn */; };
 		91A4F403204812188D1080A0 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 1DEBC0CA0702C700494614B5 /* FirebaseAuth */; };
 		94A3A9EF61AFC8450B867373 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D284C5D514781BCE196E69D /* Constants.swift */; };
@@ -39,6 +42,9 @@
 		22DDC3D419E5BB940DA6DBF0 /* LiveCoachTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveCoachTests.swift; sourceTree = "<group>"; };
 		2DE7FE3BEC18CA693E73614C /* DailySession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailySession.swift; sourceTree = "<group>"; };
 		3E65E7783076EADD9ABE8F94 /* LiveCoach.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LiveCoach.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		494A6CF88B69BF1410663490 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
+		4E28B51B99C7D3900406A190 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		5E4424D2E1C91B40F94E0124 /* AppStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStateTests.swift; sourceTree = "<group>"; };
 		7D4CDD05603602B7DD8FFD93 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		98B48AC39E61596329F1F01F /* ModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelTests.swift; sourceTree = "<group>"; };
 		AC98D08ED019866B3B017AF1 /* LiveCoachApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveCoachApp.swift; sourceTree = "<group>"; };
@@ -73,7 +79,9 @@
 		31164960B83B76F263FFFE1D /* App */ = {
 			isa = PBXGroup;
 			children = (
+				494A6CF88B69BF1410663490 /* AppState.swift */,
 				AC98D08ED019866B3B017AF1 /* LiveCoachApp.swift */,
+				4E28B51B99C7D3900406A190 /* RootView.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -115,6 +123,7 @@
 		6FAFA32EFBBE5E19E6440131 /* LiveCoachTests */ = {
 			isa = PBXGroup;
 			children = (
+				5E4424D2E1C91B40F94E0124 /* AppStateTests.swift */,
 				22DDC3D419E5BB940DA6DBF0 /* LiveCoachTests.swift */,
 				98B48AC39E61596329F1F01F /* ModelTests.swift */,
 			);
@@ -297,6 +306,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				78F5D233B47114B3BE3DBB21 /* AppStateTests.swift in Sources */,
 				D43BCC68A77996B68077570C /* LiveCoachTests.swift in Sources */,
 				D48B7FA99346BB15E281B790 /* ModelTests.swift in Sources */,
 			);
@@ -306,11 +316,13 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6AE7357E2C3EA37F2A3C10C6 /* AppState.swift in Sources */,
 				94A3A9EF61AFC8450B867373 /* Constants.swift in Sources */,
 				C78816C9A695E143D2A5A329 /* Conversation.swift in Sources */,
 				5B221D6F2F7FD4972A55D5C6 /* DailySession.swift in Sources */,
 				2C861A7451057B5A20ACE2C1 /* LiveCoachApp.swift in Sources */,
 				CBA232834DFAE2890C941428 /* Project.swift in Sources */,
+				3EF5B35CFFCAACC0B3C58DAB /* RootView.swift in Sources */,
 				6A912F079E92D26766376D86 /* User.swift in Sources */,
 				2A24B3E9BE494767D49EB821 /* UserStats.swift in Sources */,
 			);
