@@ -45,6 +45,7 @@ targets:
         product: GoogleSignIn
       - package: RevenueCat
         product: RevenueCat
+      - sdk: Speech.framework
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.konradgnat.livecoach
