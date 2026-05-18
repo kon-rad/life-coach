@@ -24,7 +24,9 @@
 		93B37C260EFA08D83BA1EDC9 /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 475C26050CA580B17C9AABDA /* AuthService.swift */; };
 		94A3A9EF61AFC8450B867373 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D284C5D514781BCE196E69D /* Constants.swift */; };
 		9E642E92A6021C7E9DCDEB65 /* AuthServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01315FA0DC0C0E5AA2C523D3 /* AuthServiceTests.swift */; };
+		AA4904B967BE0A97B160CFD8 /* OnboardingCoordinatorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 991C75AAD13073F0CE57E55D /* OnboardingCoordinatorView.swift */; };
 		AE98CAAE765D6F1EDC5B648A /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 2AE1CD37922BE4C9F88F1871 /* FirebaseMessaging */; };
+		C04FAF24CE00B283191C1041 /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F09895923293B944363802DC /* SignInView.swift */; };
 		C78816C9A695E143D2A5A329 /* Conversation.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF2E7D1997178DD4C717C0B5 /* Conversation.swift */; };
 		CBA232834DFAE2890C941428 /* Project.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA0E5C80AA83C8E8302D501A /* Project.swift */; };
 		D43BCC68A77996B68077570C /* LiveCoachTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22DDC3D419E5BB940DA6DBF0 /* LiveCoachTests.swift */; };
@@ -56,12 +58,14 @@
 		5E4424D2E1C91B40F94E0124 /* AppStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStateTests.swift; sourceTree = "<group>"; };
 		7D4CDD05603602B7DD8FFD93 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		98B48AC39E61596329F1F01F /* ModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelTests.swift; sourceTree = "<group>"; };
+		991C75AAD13073F0CE57E55D /* OnboardingCoordinatorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingCoordinatorView.swift; sourceTree = "<group>"; };
 		9EB0B8028CCCED5BA30BB964 /* ProxyAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyAPIClient.swift; sourceTree = "<group>"; };
 		AC98D08ED019866B3B017AF1 /* LiveCoachApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveCoachApp.swift; sourceTree = "<group>"; };
 		AF2E7D1997178DD4C717C0B5 /* Conversation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Conversation.swift; sourceTree = "<group>"; };
 		CA0E5C80AA83C8E8302D501A /* Project.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Project.swift; sourceTree = "<group>"; };
 		CFB154C4C39ABFA53B2EFAE2 /* UserStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserStats.swift; sourceTree = "<group>"; };
 		EE71A4B5B8E4B35373E60D0F /* LiveCoachTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = LiveCoachTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		F09895923293B944363802DC /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -164,6 +168,8 @@
 		970B954FA52529BD4ED5EED8 /* Onboarding */ = {
 			isa = PBXGroup;
 			children = (
+				991C75AAD13073F0CE57E55D /* OnboardingCoordinatorView.swift */,
+				F09895923293B944363802DC /* SignInView.swift */,
 			);
 			path = Onboarding;
 			sourceTree = "<group>";
@@ -340,9 +346,11 @@
 				C78816C9A695E143D2A5A329 /* Conversation.swift in Sources */,
 				5B221D6F2F7FD4972A55D5C6 /* DailySession.swift in Sources */,
 				2C861A7451057B5A20ACE2C1 /* LiveCoachApp.swift in Sources */,
+				AA4904B967BE0A97B160CFD8 /* OnboardingCoordinatorView.swift in Sources */,
 				CBA232834DFAE2890C941428 /* Project.swift in Sources */,
 				03A648A4A07435B0711570CC /* ProxyAPIClient.swift in Sources */,
 				3EF5B35CFFCAACC0B3C58DAB /* RootView.swift in Sources */,
+				C04FAF24CE00B283191C1041 /* SignInView.swift in Sources */,
 				6A912F079E92D26766376D86 /* User.swift in Sources */,
 				2A24B3E9BE494767D49EB821 /* UserStats.swift in Sources */,
 			);
