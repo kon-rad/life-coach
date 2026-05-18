@@ -24,6 +24,7 @@
 		5B1EA987D944F1F872B5E9A7 /* HowItWorksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46F7D3ECA8E72BF752A8BBFB /* HowItWorksView.swift */; };
 		5B221D6F2F7FD4972A55D5C6 /* DailySession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DE7FE3BEC18CA693E73614C /* DailySession.swift */; };
 		65738577BF44C3F7AA2587EA /* ProjectService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1E6C7EF1F4C01C820B69E5D /* ProjectService.swift */; };
+		65D065FC702C29FB15497BC9 /* VoiceCallService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 764299C688BA12DE45EDE81E /* VoiceCallService.swift */; };
 		6A912F079E92D26766376D86 /* User.swift in Sources */ = {isa = PBXBuildFile; fileRef = 167F5653C4168D0A768B93EF /* User.swift */; };
 		6AE7357E2C3EA37F2A3C10C6 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 494A6CF88B69BF1410663490 /* AppState.swift */; };
 		6ED610F111D82462CA65502A /* ChatService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF61DC853A12F52D5ADF7652 /* ChatService.swift */; };
@@ -88,6 +89,7 @@
 		6D5FC912E7B4107347BDEDA0 /* CallsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallsListView.swift; sourceTree = "<group>"; };
 		7080E0639349FFAFBC55EE0D /* NewConversationSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewConversationSheet.swift; sourceTree = "<group>"; };
 		71D351B84C4C394E286B53DC /* SessionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionService.swift; sourceTree = "<group>"; };
+		764299C688BA12DE45EDE81E /* VoiceCallService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceCallService.swift; sourceTree = "<group>"; };
 		778D229820169B401E0B96A3 /* GoalInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalInputView.swift; sourceTree = "<group>"; };
 		7D4CDD05603602B7DD8FFD93 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		7FC31D2175E30A9F04D8BBF8 /* StatsGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsGridView.swift; sourceTree = "<group>"; };
@@ -211,6 +213,7 @@
 				FF61DC853A12F52D5ADF7652 /* ChatService.swift */,
 				C1E6C7EF1F4C01C820B69E5D /* ProjectService.swift */,
 				71D351B84C4C394E286B53DC /* SessionService.swift */,
+				764299C688BA12DE45EDE81E /* VoiceCallService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -451,6 +454,7 @@
 				79DE8F8DFC30C81A5A6AEE75 /* StatsGridView.swift in Sources */,
 				6A912F079E92D26766376D86 /* User.swift in Sources */,
 				2A24B3E9BE494767D49EB821 /* UserStats.swift in Sources */,
+				65D065FC702C29FB15497BC9 /* VoiceCallService.swift in Sources */,
 				C34836A116A68F90832218E3 /* VoiceCallView.swift in Sources */,
 				47CFD208B7C9CF1448DDDA7B /* WelcomeView.swift in Sources */,
 			);
