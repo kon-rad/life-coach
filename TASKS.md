@@ -443,7 +443,7 @@ proxy/
   - **Acceptance**: `xcodebuild -scheme LiveCoach -destination 'platform=iOS Simulator,name=iPhone 16' build 2>&1 | grep "BUILD SUCCEEDED"`. Write unit test `LiveCoachTests/AppStateTests.swift`: create `AppState()`, assert `isOnboardingComplete == false`, set `isPremium = true`, assert `isPremium == true`. Test passes.
   - **Depends on**: T-002, T-003
 
-- [ ] **T-005 — ProxyAPIClient**
+- [x] **T-005 — ProxyAPIClient**
   - **Why**: All data I/O (except auth) flows through this. Other services depend on it.
   - **Do**: Create `LiveCoach/Network/ProxyAPIClient.swift` and `LiveCoach/Network/APIError.swift`:
 
@@ -573,7 +573,7 @@ proxy/
 
 ### Phase 1 — Authentication
 
-- [ ] **T-006 — AuthService**
+- [x] **T-006 — AuthService**
   - **Why**: Sign-in / sign-out before any data can be loaded.
   - **Do**: Create `LiveCoach/Services/AuthService.swift`:
     ```swift
