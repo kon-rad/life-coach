@@ -48,7 +48,7 @@ struct PrivacyView: View {
             .padding(.bottom, 48)
             .padding(.top, 16)
         }
-        .background(Color(uiColor: .systemBackground))
+        .background(.background)
     }
 }
 
