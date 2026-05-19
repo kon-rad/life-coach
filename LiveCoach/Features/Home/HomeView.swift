@@ -4,7 +4,8 @@ struct HomeView: View {
     @Environment(AppState.self) var appState
     @Environment(SessionService.self) var sessionService
     @State private var viewModel: HomeViewModel?
-    @State private var showVoiceCallPlaceholder = false
+    @State private var showVoiceCall = false
+    @State private var voiceCallService = VoiceCallService()
 
     var body: some View {
         ScrollView {
@@ -35,10 +36,13 @@ struct HomeView: View {
             viewModel = vm
             await vm.load()
         }
-        .sheet(isPresented: $showVoiceCallPlaceholder) {
-            Text("Voice call coming soon")
-                .font(.title2)
-                .padding()
+        .fullScreenCover(isPresented: $showVoiceCall) {
+            if let vm = viewModel {
+                VoiceCallView(
+                    callType: vm.shouldShowMorningCTA ? .morningCall : .eveningCall,
+                    voiceCallService: voiceCallService
+                )
+            }
         }
     }
 
@@ -167,7 +171,8 @@ struct HomeView: View {
             .disabled(true)
         } else {
             Button {
-                showVoiceCallPlaceholder = true
+                voiceCallService = VoiceCallService()
+                showVoiceCall = true
             } label: {
                 Text(vm.shouldShowMorningCTA ? "Start morning check-in →" : "Start evening check-in →")
                     .font(.headline)

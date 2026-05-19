@@ -6,6 +6,7 @@ struct CallsView: View {
     @State private var showNewConversation = false
     @State private var selectedConversation: Conversation?
     @State private var showVoiceCall = false
+    @State private var voiceCallService = VoiceCallService()
 
     var body: some View {
         NavigationStack {
@@ -51,7 +52,7 @@ struct CallsView: View {
                 }
             }
             .navigationDestination(isPresented: $showVoiceCall) {
-                VoiceCallView()
+                VoiceCallView(callType: .freeVoice, voiceCallService: voiceCallService)
             }
             .task {
                 try? await chatService.loadConversations()
