@@ -1303,7 +1303,7 @@ proxy/
   - **Acceptance**: `cd proxy && npx tsc --noEmit` exits 0. `cd proxy && npm test` passes.
   - **Depends on**: T-030, T-028
 
-- [ ] **T-032 — /webhooks routes (VAPI + RevenueCat)**
+- [x] **T-032 — /webhooks routes (VAPI + RevenueCat)**
   - **Why**: VAPI fires webhooks with structured call results; RevenueCat fires subscription events.
   - **Do**: `proxy/src/routes/webhooks.ts`.
     
