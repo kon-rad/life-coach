@@ -3,6 +3,7 @@ import SwiftUI
 struct MainTabView: View {
     @Environment(AppState.self) var appState
     @State private var sessionService = SessionService()
+    @State private var subscriptionService = SubscriptionService()
     private let api = ProxyAPIClient.shared
 
     var body: some View {
@@ -18,12 +19,21 @@ struct MainTabView: View {
         }
         .environment(sessionService)
         .task {
+            guard !DemoMode.isEnabled else { return }
             do {
                 appState.currentUser = try await api.get("/user/profile")
             } catch {}
             guard appState.currentUser != nil else { return }
+            async let projectLoad: Project? = try? api.get("/project")
+            async let statsLoad: UserStats? = try? api.get("/user/stats")
+            appState.currentProject = await projectLoad
+            if let stats = await statsLoad {
+                appState.userStats = stats
+            }
             do {
-                appState.currentProject = try await api.get("/project")
+                try await subscriptionService.fetchStatus()
+                appState.isPremium = subscriptionService.isPremium ||
+                    (appState.userStats?.voiceMinutesRemainingThisWeek ?? 0) > 0
             } catch {}
         }
     }

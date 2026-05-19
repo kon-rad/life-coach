@@ -35,3 +35,4 @@ T-031 VERIFY: tsc --noEmit exits 0, npm test passed (7 vapi tests + 5 chat tests
 T-032 VERIFY: cd proxy && npx tsc --noEmit exits 0. npm test: 58 tests passed (9 suites). VAPI webhook handles morning (creates session with micro-actions, updates conversation) and evening (score, tomorrow actions, voice seconds, conversation). RevenueCat webhook sets premium/free on correct events. Secret verification returns 401 for invalid/missing secrets.
 T-033 VERIFY: tsc noEmit=0, npm test 72/72 passed
 T-034 VERIFY: BUILD SUCCEEDED, proxy tsc --noEmit exits 0, npm test 73/73 passed (6 chat tests including 402 rate-limit test)
+T-035 VERIFY: BUILD SUCCEEDED, TEST SUCCEEDED (all existing tests pass; HomeViewModel updates appState.userStats on load; MainTabView loads stats + isPremium from SubscriptionService; HomeView adds pull-to-refresh and "Complete your first check-in" nil score subtitle)

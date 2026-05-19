@@ -31,8 +31,11 @@ struct HomeView: View {
             }
             .padding(16)
         }
+        .refreshable {
+            await viewModel?.load()
+        }
         .task {
-            let vm = HomeViewModel(sessionService: sessionService)
+            let vm = HomeViewModel(sessionService: sessionService, appState: appState)
             viewModel = vm
             await vm.load()
         }
@@ -75,7 +78,7 @@ struct HomeView: View {
         } else {
             scoreValue = nil
             label = "Avg Score"
-            subtitle = nil
+            subtitle = "Complete your first check-in"
         }
 
         let cardColor: Color

@@ -10,9 +10,11 @@ import Foundation
 
     private let sessionService: SessionService
     private let api = ProxyAPIClient.shared
+    private let appState: AppState?
 
-    init(sessionService: SessionService) {
+    init(sessionService: SessionService, appState: AppState? = nil) {
         self.sessionService = sessionService
+        self.appState = appState
     }
 
     func load() async {
@@ -20,10 +22,17 @@ import Foundation
         error = nil
         defer { isLoading = false }
         dailyQuote = Constants.DailyQuotes.quote(for: Date())
+        if DemoMode.isEnabled {
+            todaySession = DemoMode.todaySession
+            userStats = DemoMode.userStats
+            return
+        }
         await sessionService.loadToday()
         todaySession = sessionService.todaySession
         do {
-            userStats = try await api.get("/user/stats")
+            let stats: UserStats = try await api.get("/user/stats")
+            userStats = stats
+            appState?.userStats = stats
         } catch {
             self.error = error
         }
