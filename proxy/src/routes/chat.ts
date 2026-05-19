@@ -112,6 +112,8 @@ Rules:
 - You are a coach, not a therapist; focus on action and accountability`;
 }
 
+const FREE_TIER_DAILY_LIMIT = 10;
+
 router.post('/', async (req, res: Response) => {
   const uid = (req as AuthedRequest).uid;
   const { conversationId, message } = req.body as {
@@ -125,6 +127,36 @@ router.post('/', async (req, res: Response) => {
   }
 
   try {
+    // Rate limit check for free tier users
+    const userDoc = await db.collection('users').doc(uid).get();
+    const userData = userDoc.data() as { subscriptionStatus?: string } | undefined;
+    if (userData?.subscriptionStatus !== 'premium') {
+      const today = formatDate(new Date());
+      const convsSnapshot = await db.collection('conversations').where('userId', '==', uid).get();
+      let todayUserMessageCount = 0;
+      for (const convDoc of convsSnapshot.docs) {
+        const data = convDoc.data() as ConversationDoc;
+        if (data.messages) {
+          try {
+            const msgs = await decryptJSON<Message[]>(data.messages, uid);
+            todayUserMessageCount += msgs.filter(
+              (m) => m.role === 'user' && m.timestamp >= `${today}T00:00:00.000Z`,
+            ).length;
+          } catch {
+            // skip unreadable conversations
+          }
+        }
+      }
+      if (todayUserMessageCount >= FREE_TIER_DAILY_LIMIT) {
+        res.status(402).json({
+          error: 'daily_limit_reached',
+          message:
+            'Free tier limit of 10 messages per day reached. Upgrade to Premium for unlimited chat.',
+        });
+        return;
+      }
+    }
+
     const convDoc = await db.collection('conversations').doc(conversationId).get();
     if (!convDoc.exists) {
       res.status(404).json({ error: 'Conversation not found' });

@@ -1,5 +1,10 @@
 import Foundation
 
+enum ChatError: Error {
+    case dailyLimitReached
+    case streamFailed
+}
+
 @MainActor
 @Observable final class ChatService {
     var conversations: [Conversation] = []
@@ -25,6 +30,24 @@ import Foundation
 
     func sendMessage(conversationId: String, text: String) -> AsyncThrowingStream<String, Error> {
         struct Body: Encodable { let conversationId: String; let message: String }
-        return api.stream("/chat", body: Body(conversationId: conversationId, message: text))
+        let rawStream = api.stream("/chat", body: Body(conversationId: conversationId, message: text))
+        return AsyncThrowingStream { continuation in
+            Task {
+                do {
+                    for try await chunk in rawStream {
+                        continuation.yield(chunk)
+                    }
+                    continuation.finish()
+                } catch let apiError as APIError {
+                    if case .httpError(402, _) = apiError {
+                        continuation.finish(throwing: ChatError.dailyLimitReached)
+                    } else {
+                        continuation.finish(throwing: apiError)
+                    }
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+        }
     }
 }

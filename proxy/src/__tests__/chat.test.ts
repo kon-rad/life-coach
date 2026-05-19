@@ -47,6 +47,11 @@ const { streamChat } = jest.requireMock('../services/togetherAI') as {
   streamChat: jest.Mock;
 };
 
+const premiumUserDoc = {
+  exists: true,
+  data: () => ({ subscriptionStatus: 'premium' }),
+};
+
 const existingMessages = [
   { id: 'msg1', role: 'assistant', content: 'Hello! What are you working on today?', timestamp: '2026-05-19T08:00:00.000Z' },
 ];
@@ -78,6 +83,7 @@ const sessionsSnapshot = {
 
 function setupDbSequence() {
   // Firestore calls in order:
+  // 0. users.doc(uid).get() → premiumUserDoc (skips rate limit)
   // 1. conversations.doc(conversationId).get() → conversationDoc
   // 2. projects.doc(`user1_active`).get() → projectDoc
   // 3. sessions.where(...).get() → sessionsSnapshot
@@ -86,6 +92,7 @@ function setupDbSequence() {
   db.doc.mockReturnThis();
   db.where.mockReturnThis();
   db.get
+    .mockResolvedValueOnce(premiumUserDoc)
     .mockResolvedValueOnce(conversationDoc)
     .mockResolvedValueOnce(projectDoc)
     .mockResolvedValueOnce(sessionsSnapshot);
@@ -195,5 +202,41 @@ describe('POST /chat', () => {
     expect(res.text).toContain('"delta":"Great"');
     expect(res.text).toContain('"delta":" work!"');
     expect(res.text).toContain('"done":true');
+  });
+
+  it('returns 402 when free user has reached 10 messages today', async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const tenUserMessages = Array.from({ length: 10 }, (_, i) => ({
+      id: `msg${i}`,
+      role: 'user',
+      content: 'message',
+      timestamp: `${today}T10:00:00.000Z`,
+    }));
+    const convsWithMessages = {
+      docs: [
+        {
+          data: () => ({
+            userId: 'user1',
+            type: 'freeChat',
+            messages: `enc(${JSON.stringify(tenUserMessages)})`,
+          }),
+        },
+      ],
+    };
+
+    db.collection.mockReturnThis();
+    db.doc.mockReturnThis();
+    db.where.mockReturnThis();
+    db.get
+      .mockResolvedValueOnce({ exists: true, data: () => ({}) })  // free user (no subscriptionStatus)
+      .mockResolvedValueOnce(convsWithMessages);                   // conversations listing
+
+    const res = await request(app)
+      .post('/chat')
+      .set('Authorization', 'Bearer valid-token')
+      .send({ conversationId: 'conv1', message: 'Hello' });
+
+    expect(res.status).toBe(402);
+    expect(res.body.error).toBe('daily_limit_reached');
   });
 });

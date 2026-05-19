@@ -8,6 +8,7 @@ struct ConversationDetailView: View {
     @State private var messages: [Message] = []
     @State private var input = ""
     @State private var isStreaming = false
+    @State private var showUpgradeAlert = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -72,6 +73,12 @@ struct ConversationDetailView: View {
         .onAppear {
             messages = conversation.messages
         }
+        .alert("Daily Limit Reached", isPresented: $showUpgradeAlert) {
+            Button("Upgrade") { }
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("You've reached your free limit of 10 messages today. Upgrade to Life Coach App Premium for unlimited chat.")
+        }
     }
 
     private var canSend: Bool {
@@ -100,6 +107,11 @@ struct ConversationDetailView: View {
                 }
                 let updated = try await chatService.getConversation(id: conversation.id)
                 messages = updated.messages
+            } catch ChatError.dailyLimitReached {
+                if messages.last?.role == .assistant && messages.last?.content.isEmpty == true {
+                    messages.removeLast()
+                }
+                showUpgradeAlert = true
             } catch {
                 if messages.last?.role == .assistant && messages.last?.content.isEmpty == true {
                     messages.removeLast()

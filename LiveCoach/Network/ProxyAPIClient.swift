@@ -77,7 +77,18 @@ final class ProxyAPIClient: Sendable {
                     req.setValue("Bearer \(try await authToken())", forHTTPHeaderField: "Authorization")
                     req.setValue("text/event-stream", forHTTPHeaderField: "Accept")
                     req.httpBody = try encoder.encode(body)
-                    let (bytes, _) = try await URLSession.shared.bytes(for: req)
+                    let (bytes, response) = try await URLSession.shared.bytes(for: req)
+                    if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+                        var bodyData = Data()
+                        for try await byte in bytes { bodyData.append(byte) }
+                        let msg = String(data: bodyData, encoding: .utf8) ?? "Unknown error"
+                        if http.statusCode == 401 {
+                            continuation.finish(throwing: APIError.unauthorized)
+                        } else {
+                            continuation.finish(throwing: APIError.httpError(http.statusCode, msg))
+                        }
+                        return
+                    }
                     for try await line in bytes.lines {
                         if line.hasPrefix("data: ") {
                             let payload = String(line.dropFirst(6))
