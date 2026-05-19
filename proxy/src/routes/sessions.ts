@@ -40,13 +40,13 @@ function emptySession(userId: string, date: string) {
 
 async function decryptSession(docId: string, data: SessionDoc, uid: string) {
   const microActions = data.microActions
-    ? await decryptJSON<MicroAction[]>(data.microActions, uid)
+    ? await decryptJSON<MicroAction[]>(data.microActions)
     : [];
   const tomorrowMicroActions = data.tomorrowMicroActions
-    ? await decryptJSON<MicroAction[]>(data.tomorrowMicroActions, uid)
+    ? await decryptJSON<MicroAction[]>(data.tomorrowMicroActions)
     : null;
   const scoreRationale = data.scoreRationale
-    ? await decrypt(data.scoreRationale, uid)
+    ? await decrypt(data.scoreRationale)
     : null;
 
   return {
@@ -132,7 +132,7 @@ router.put('/:date/microactions/:actionId/complete', async (req, res: Response) 
 
     const data = doc.data() as SessionDoc;
     const microActions = data.microActions
-      ? await decryptJSON<MicroAction[]>(data.microActions, uid)
+      ? await decryptJSON<MicroAction[]>(data.microActions)
       : [];
 
     const idx = microActions.findIndex((a) => a.id === actionId);
@@ -144,7 +144,7 @@ router.put('/:date/microactions/:actionId/complete', async (req, res: Response) 
     microActions[idx].isCompleted = isCompleted;
     microActions[idx].completedAt = isCompleted ? new Date().toISOString() : null;
 
-    const encryptedMicroActions = await encryptJSON(microActions, uid);
+    const encryptedMicroActions = await encryptJSON(microActions);
     await db.collection('sessions').doc(docId).update({ microActions: encryptedMicroActions });
 
     const updated = await decryptSession(docId, { ...data, microActions: encryptedMicroActions }, uid);

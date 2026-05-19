@@ -15,7 +15,7 @@ function generateProjectDescription(title: string, userId: string): void {
       const prompt = `In 2-3 sentences, describe what working on this goal means and what success looks like: "${title}". Be specific and motivating. Do not use generic language.`;
       const description = await complete(prompt);
       if (!description) return;
-      const encryptedDesc = await encrypt(description, userId);
+      const encryptedDesc = await encrypt(description);
       await db.collection('projects').doc(projectDocId(userId)).update({ description: encryptedDesc });
     } catch {
       // best-effort
@@ -33,8 +33,8 @@ router.get('/', async (req, res: Response) => {
     }
 
     const data = doc.data()!;
-    const title = await decrypt(data.title, uid);
-    const description = data.description ? await decrypt(data.description, uid) : '';
+    const title = await decrypt(data.title);
+    const description = data.description ? await decrypt(data.description) : '';
 
     res.json({
       id: doc.id,
@@ -59,8 +59,8 @@ router.post('/', async (req, res: Response) => {
   }
 
   try {
-    const encryptedTitle = await encrypt(title.trim(), uid);
-    const encryptedDescription = await encrypt(description ?? '', uid);
+    const encryptedTitle = await encrypt(title.trim());
+    const encryptedDescription = await encrypt(description ?? '');
 
     const docData = {
       userId: uid,
@@ -98,7 +98,7 @@ router.put('/:id', async (req, res: Response) => {
   }
 
   try {
-    const encryptedTitle = await encrypt(title.trim(), uid);
+    const encryptedTitle = await encrypt(title.trim());
     await db.collection('projects').doc(projectDocId(uid)).update({
       title: encryptedTitle,
     });

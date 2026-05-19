@@ -77,7 +77,7 @@ async function getLast7Sessions(
     snapshot.docs.map(async (doc) => {
       const data = doc.data() as SessionDoc;
       const microActions = data.microActions
-        ? await decryptJSON<MicroAction[]>(data.microActions, uid)
+        ? await decryptJSON<MicroAction[]>(data.microActions)
         : [];
       return { date: data.date, microActions, score: data.score ?? null };
     }),
@@ -166,9 +166,9 @@ router.post('/init-call', async (req, res: Response) => {
       return;
     }
     const projectData = projectDoc.data() as ProjectDoc;
-    const title = await decrypt(projectData.title, uid);
+    const title = await decrypt(projectData.title);
     const description = projectData.description
-      ? await decrypt(projectData.description, uid)
+      ? await decrypt(projectData.description)
       : '';
 
     // Fetch last 7 sessions for history context
@@ -183,7 +183,7 @@ router.post('/init-call', async (req, res: Response) => {
       if (todayDoc.exists) {
         const sessionData = todayDoc.data() as SessionDoc;
         const microActions = sessionData.microActions
-          ? await decryptJSON<MicroAction[]>(sessionData.microActions, uid)
+          ? await decryptJSON<MicroAction[]>(sessionData.microActions)
           : [];
         todayActions = formatTodayActions(microActions);
       }
@@ -215,11 +215,11 @@ router.post('/init-call', async (req, res: Response) => {
     await db.collection('conversations').doc(conversationId).set({
       userId: uid,
       type: conversationType,
-      messages: await encryptJSON([], uid),
+      messages: await encryptJSON([]),
       vapiCallId,
       durationSeconds: null,
       createdAt: new Date().toISOString(),
-      summary: await encrypt('', uid),
+      summary: await encrypt(''),
     });
 
     res.json({

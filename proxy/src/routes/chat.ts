@@ -62,7 +62,7 @@ async function getLast7DaysSessions(
       snapshot.docs.map(async (doc) => {
         const data = doc.data() as SessionDoc;
         const microActions = data.microActions
-          ? await decryptJSON<MicroAction[]>(data.microActions, uid)
+          ? await decryptJSON<MicroAction[]>(data.microActions)
           : [];
         return { date: data.date, score: data.score ?? null, microActions };
       }),
@@ -138,7 +138,7 @@ router.post('/', async (req, res: Response) => {
         const data = convDoc.data() as ConversationDoc;
         if (data.messages) {
           try {
-            const msgs = await decryptJSON<Message[]>(data.messages, uid);
+            const msgs = await decryptJSON<Message[]>(data.messages);
             todayUserMessageCount += msgs.filter(
               (m) => m.role === 'user' && m.timestamp >= `${today}T00:00:00.000Z`,
             ).length;
@@ -169,7 +169,7 @@ router.post('/', async (req, res: Response) => {
     }
 
     const existingMessages: Message[] = convData.messages
-      ? await decryptJSON<Message[]>(convData.messages, uid)
+      ? await decryptJSON<Message[]>(convData.messages)
       : [];
 
     let projectTitle = '';
@@ -178,9 +178,9 @@ router.post('/', async (req, res: Response) => {
       const projectDoc = await db.collection('projects').doc(`${uid}_active`).get();
       if (projectDoc.exists) {
         const pData = projectDoc.data()!;
-        projectTitle = await decrypt(pData.title as string, uid);
+        projectTitle = await decrypt(pData.title as string);
         projectDescription = pData.description
-          ? await decrypt(pData.description as string, uid)
+          ? await decrypt(pData.description as string)
           : '';
       }
     } catch {
@@ -229,7 +229,7 @@ router.post('/', async (req, res: Response) => {
     await db
       .collection('conversations')
       .doc(conversationId)
-      .update({ messages: await encryptJSON(updatedMessages, uid) });
+      .update({ messages: await encryptJSON(updatedMessages) });
 
     res.write(`data: ${JSON.stringify({ done: true, messageId: assistantMsgId })}\n\n`);
     res.end();

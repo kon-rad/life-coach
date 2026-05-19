@@ -17,6 +17,12 @@ build/
 *.dSYM
 xcuserdata/
 
+
+lifecoach-dea8c-firebase-adminsdk-fbsvc-5ed91b387b.json
+
+GoogleService-Info.plist
+
+
 # Swift Package Manager
 .build/
 .swiftpm/

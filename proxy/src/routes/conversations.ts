@@ -42,7 +42,7 @@ router.get('/', async (req, res: Response) => {
     const conversations = await Promise.all(
       snapshot.docs.map(async (doc) => {
         const data = doc.data() as ConversationDoc;
-        const summary = data.summary ? await decrypt(data.summary, uid) : '';
+        const summary = data.summary ? await decrypt(data.summary) : '';
         return {
           id: doc.id,
           userId: data.userId,
@@ -74,8 +74,8 @@ router.post('/', async (req, res: Response) => {
   try {
     const id = crypto.randomUUID();
     const createdAt = new Date().toISOString();
-    const encryptedMessages = await encryptJSON([], uid);
-    const encryptedSummary = await encrypt('', uid);
+    const encryptedMessages = await encryptJSON([]);
+    const encryptedSummary = await encrypt('');
 
     const doc: ConversationDoc = {
       userId: uid,
@@ -123,9 +123,9 @@ router.get('/:id', async (req, res: Response) => {
     }
 
     const messages: Message[] = data.messages
-      ? await decryptJSON<Message[]>(data.messages, uid)
+      ? await decryptJSON<Message[]>(data.messages)
       : [];
-    const summary = data.summary ? await decrypt(data.summary, uid) : '';
+    const summary = data.summary ? await decrypt(data.summary) : '';
 
     res.json({
       id: doc.id,
