@@ -1260,7 +1260,7 @@ proxy/
   - **Acceptance**: `cd proxy && npx tsc --noEmit` exits 0. `cd proxy && npm test` passes.
   - **Depends on**: T-027, T-028
 
-- [ ] **T-030 — /conversations routes**
+- [x] **T-030 — /conversations routes**
   - **Why**: iOS needs to list all past conversations and fetch individual ones.
   - **Do**: `proxy/src/routes/conversations.ts`. Auth middleware.
     
