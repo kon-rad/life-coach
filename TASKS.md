@@ -1226,7 +1226,7 @@ proxy/
   - **Acceptance**: `cd proxy && npx tsc --noEmit` exits 0. `cd proxy && npm test` passes.
   - **Depends on**: T-026
 
-- [ ] **T-029 — /chat route (Together AI streaming proxy)**
+- [x] **T-029 — /chat route (Together AI streaming proxy)**
   - **Why**: Text chat streams AI responses through the proxy so the iOS app never touches Together AI directly.
   - **Do**: `proxy/src/services/togetherAI.ts`:
     ```typescript
