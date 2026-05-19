@@ -1,4 +1,10 @@
 import request from 'supertest';
+
+jest.mock('../services/firebase', () => ({
+  adminAuth: { verifyIdToken: jest.fn() },
+  db: {},
+}));
+
 import { app } from '../index';
 
 describe('GET /health', () => {
