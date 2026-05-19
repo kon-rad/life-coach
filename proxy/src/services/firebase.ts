@@ -14,3 +14,12 @@ if (!admin.apps.length) {
 
 export const adminAuth = admin.auth();
 export const db = admin.firestore();
+export const messaging = admin.messaging();
+
+export async function sendPushNotification(
+  fcmToken: string,
+  title: string,
+  body: string
+): Promise<void> {
+  await messaging.send({ token: fcmToken, notification: { title, body } });
+}

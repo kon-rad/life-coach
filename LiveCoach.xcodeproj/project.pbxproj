@@ -14,10 +14,12 @@
 		1F5E1173A5ADB14703431B45 /* SubscriptionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 725B3A63CB5171A1388A969E /* SubscriptionView.swift */; };
 		2A24B3E9BE494767D49EB821 /* UserStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFB154C4C39ABFA53B2EFAE2 /* UserStats.swift */; };
 		2C861A7451057B5A20ACE2C1 /* LiveCoachApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC98D08ED019866B3B017AF1 /* LiveCoachApp.swift */; };
+		3189226190B86C0991223D5D /* DemoMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3F05BC6432D5D1BF223DD61 /* DemoMode.swift */; };
 		3EA9E02DF52EBE49A54CDE03 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 6DDF4A03C284D79D56E84820 /* RevenueCat */; };
 		3EF5B35CFFCAACC0B3C58DAB /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E28B51B99C7D3900406A190 /* RootView.swift */; };
 		3F6E5D70C291B8D2EE85D944 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7D4CDD05603602B7DD8FFD93 /* Assets.xcassets */; };
 		47CFD208B7C9CF1448DDDA7B /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02E4DDB7AA77F92FC383AA0 /* WelcomeView.swift */; };
+		483D123339A9034B1B5CF14C /* FCMDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10C100E75A5F9A5DAB580319 /* FCMDelegate.swift */; };
 		4892C998822A768F6EFFB049 /* ProxyAPIClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44693D5E3B80C375A95ECA32 /* ProxyAPIClientTests.swift */; };
 		49A24FE26BE5A89639056470 /* NotificationSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 667E7A68F98FFBE25AD42310 /* NotificationSettingsView.swift */; };
 		4CF17E0F6EC2A38076506F2B /* ProjectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C41B04199064248AAF6F14C /* ProjectView.swift */; };
@@ -75,6 +77,7 @@
 
 /* Begin PBXFileReference section */
 		01315FA0DC0C0E5AA2C523D3 /* AuthServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthServiceTests.swift; sourceTree = "<group>"; };
+		10C100E75A5F9A5DAB580319 /* FCMDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FCMDelegate.swift; sourceTree = "<group>"; };
 		167F5653C4168D0A768B93EF /* User.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = User.swift; sourceTree = "<group>"; };
 		1C41B04199064248AAF6F14C /* ProjectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectView.swift; sourceTree = "<group>"; };
 		1D284C5D514781BCE196E69D /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
@@ -110,6 +113,7 @@
 		98B48AC39E61596329F1F01F /* ModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelTests.swift; sourceTree = "<group>"; };
 		991C75AAD13073F0CE57E55D /* OnboardingCoordinatorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingCoordinatorView.swift; sourceTree = "<group>"; };
 		9EB0B8028CCCED5BA30BB964 /* ProxyAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyAPIClient.swift; sourceTree = "<group>"; };
+		A3F05BC6432D5D1BF223DD61 /* DemoMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoMode.swift; sourceTree = "<group>"; };
 		A4C6EA4C6551B9FE9BF31BED /* HomeViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewModel.swift; sourceTree = "<group>"; };
 		AC98D08ED019866B3B017AF1 /* LiveCoachApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveCoachApp.swift; sourceTree = "<group>"; };
 		AF2E7D1997178DD4C717C0B5 /* Conversation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Conversation.swift; sourceTree = "<group>"; };
@@ -169,6 +173,7 @@
 			children = (
 				ABF4D2001B0DCE7201CB65CA /* Components */,
 				1D284C5D514781BCE196E69D /* Constants.swift */,
+				A3F05BC6432D5D1BF223DD61 /* DemoMode.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -225,6 +230,7 @@
 			children = (
 				475C26050CA580B17C9AABDA /* AuthService.swift */,
 				FF61DC853A12F52D5ADF7652 /* ChatService.swift */,
+				10C100E75A5F9A5DAB580319 /* FCMDelegate.swift */,
 				6FE56C101A54EB5CF556AE50 /* NotificationService.swift */,
 				C1E6C7EF1F4C01C820B69E5D /* ProjectService.swift */,
 				71D351B84C4C394E286B53DC /* SessionService.swift */,
@@ -458,7 +464,9 @@
 				C78816C9A695E143D2A5A329 /* Conversation.swift in Sources */,
 				F23B2AD1D8F218D5162B67FE /* ConversationDetailView.swift in Sources */,
 				5B221D6F2F7FD4972A55D5C6 /* DailySession.swift in Sources */,
+				3189226190B86C0991223D5D /* DemoMode.swift in Sources */,
 				EFA036BCA9F85E0ED83D4DD7 /* EditProjectView.swift in Sources */,
+				483D123339A9034B1B5CF14C /* FCMDelegate.swift in Sources */,
 				B1F7ACC23767BAF422350B1B /* GoalInputView.swift in Sources */,
 				C4B8A65CB9502DD126033A15 /* HomeView.swift in Sources */,
 				8A6048BF3DE19EBEFEF8F611 /* HomeViewModel.swift in Sources */,

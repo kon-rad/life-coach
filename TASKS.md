@@ -1383,7 +1383,7 @@ proxy/
   - **Acceptance**: `xcodebuild -scheme LiveCoach -destination 'platform=iOS Simulator,name=iPhone 16' build 2>&1 | grep "BUILD SUCCEEDED"`. `cd proxy && npx tsc --noEmit && npm test` passes. Write proxy test: mock user with 10 existing messages today → POST /chat returns 402.
   - **Depends on**: T-017, T-029
 
-- [ ] **T-035 — User stats loading + Home tab avg score display**
+- [x] **T-035 — User stats loading + Home tab avg score display**
   - **Why**: The Home tab dashboard should show live stats from the proxy.
   - **Do**:
     In `HomeViewModel.load()`: call `GET /user/stats` via ProxyAPIClient → decode `UserStats` → store in `HomeViewModel.userStats` and also update `appState.userStats` and `appState.isPremium = userStats.voiceMinutesRemainingThisWeek > 0 || subscriptionService.isPremium`.
@@ -1404,7 +1404,7 @@ proxy/
   - **Acceptance**: `xcodebuild -scheme LiveCoach -destination 'platform=iOS Simulator,name=iPhone 16' build 2>&1 | grep "BUILD SUCCEEDED"`.
   - **Depends on**: T-013, T-033
 
-- [ ] **T-036 — Push notification FCM registration**
+- [x] **T-036 — Push notification FCM registration**
   - **Why**: FCM device token must be sent to proxy so server can schedule daily reminders.
   - **Do**:
     In `LiveCoachApp.swift`: Add `UNUserNotificationCenter.current().delegate = notificationDelegate` in `init()`. Create `LiveCoach/Services/FCMDelegate.swift` implementing `UNUserNotificationCenterDelegate` and `MessagingDelegate`. In `MessagingDelegate.messaging(_:didReceiveRegistrationToken:)`: call `PUT /user/profile` with `{fcmToken: fcmToken}` on ProxyAPIClient. Add `fcmToken` as a plaintext (not encrypted) field in the `users/{uid}` Firestore document.
