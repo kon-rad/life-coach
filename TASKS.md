@@ -1333,7 +1333,7 @@ proxy/
   - **Acceptance**: `cd proxy && npx tsc --noEmit` exits 0. `cd proxy && npm test` passes.
   - **Depends on**: T-031
 
-- [ ] **T-033 — /user routes (profile + stats + delete)**
+- [x] **T-033 — /user routes (profile + stats + delete)**
   - **Why**: Profile read/write and account deletion.
   - **Do**: `proxy/src/routes/user.ts`. Auth middleware.
     
