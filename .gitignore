@@ -1,0 +1,58 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Xcode
+DerivedData/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+build/
+*.ipa
+*.dSYM.zip
+*.dSYM
+xcuserdata/
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Packages/
+
+# CocoaPods (not used, but just in case)
+Pods/
+
+# Firebase / secrets
+GoogleService-Info.plist
+**/GoogleService-Info.plist
+.env
+.env.*
+!.env.example
+
+# Node.js / proxy server
+proxy/node_modules/
+proxy/dist/
+proxy/.env
+proxy/*.log
+
+# Logs
+*.log
+ralph.log
+
+# Credentials & secrets
+*.p8
+*.p12
+*.key
+AuthKey_*.p8
+secrets/
+
+# Xcode Package Resolved (keep this — locks dependency versions)
+# LiveCoach.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+
+# OS generated
+Thumbs.db
+ehthumbs.db
+Desktop.ini
