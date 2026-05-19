@@ -610,7 +610,7 @@ proxy/
   - **Acceptance**: `xcodebuild -scheme LiveCoach -destination 'platform=iOS Simulator,name=iPhone 16' build 2>&1 | grep "BUILD SUCCEEDED"`. Write `LiveCoachTests/AuthServiceTests.swift`: test that `AuthService()` initializes without crash and `currentFirebaseUser` is nil when no user is signed in. Test passes.
   - **Depends on**: T-005
 
-- [ ] **T-007 — SignInView**
+- [x] **T-007 — SignInView**
   - **Why**: The sign-in screen (onboarding screen 3).
   - **Do**: Create `LiveCoach/Features/Onboarding/SignInView.swift`. The view takes `onSignedIn: () -> Void` closure called after successful sign-in. Layout (centered VStack, padding 32): app logo placeholder (Image(systemName: "person.circle.fill") at 80pt, primary color), "Create your account" title, "Join thousands building better habits" subtitle, `SignInWithAppleButton` (primary, height 56), Google sign-in button (plain button styled with Google colors, height 56, shows Google "G" logo via Image(systemName: "globe") placeholder), "By continuing you agree to our Terms and Privacy Policy." fine print in gray. On success call `onSignedIn()`. On error show alert.
 
@@ -622,7 +622,7 @@ proxy/
 
 ### Phase 2 — Onboarding
 
-- [ ] **T-008 — WelcomeView + PrivacyView**
+- [x] **T-008 — WelcomeView + PrivacyView**
   - **Why**: Onboarding screens 1 and 2.
   - **Do**: 
     Create `LiveCoach/Features/Onboarding/WelcomeView.swift`. Full-screen VStack: gradient background (from Color(.systemIndigo) to Color(.systemPurple)), white "Live Coach" title (largeTitle, bold), "Your AI life coach. Private by design." subtitle, three feature rows (Image(systemName: ...) icon + text):
@@ -639,7 +639,7 @@ proxy/
   - **Acceptance**: `xcodebuild -scheme LiveCoach -destination 'platform=iOS Simulator,name=iPhone 16' build 2>&1 | grep "BUILD SUCCEEDED"`.
   - **Depends on**: T-007
 
-- [ ] **T-009 — GoalInputView**
+- [x] **T-009 — GoalInputView**
   - **Why**: Onboarding screen 4 — captures the user's one project goal.
   - **Do**: Create `LiveCoach/Features/Onboarding/GoalInputView.swift`. Takes `onGoalSubmitted: (String) -> Void` closure.
     Layout: "What do you want to work on?" headline, "This is your one project. You can update it anytime." subtitle, multi-line TextEditor with placeholder text (overlay-based) for the goal text (max 200 chars), character count label, microphone button that uses `SFSpeechRecognizer` + `AVAudioEngine` to transcribe speech and append to the text field (request permission if needed; show mic disabled state if denied), scrollable row of tappable example chips: ["Start a business", "Get fit", "Learn a skill", "Find a relationship", "Get a new job"] — tapping a chip fills the text field with that chip text, "This is my goal →" button (disabled if text is empty) calls `onGoalSubmitted(text.trimmingCharacters(in: .whitespacesAndNewlines))`.
@@ -647,7 +647,7 @@ proxy/
   - **Acceptance**: `xcodebuild -scheme LiveCoach -destination 'platform=iOS Simulator,name=iPhone 16' build 2>&1 | grep "BUILD SUCCEEDED"`.
   - **Depends on**: T-008
 
-- [ ] **T-010 — HowItWorksView + OnboardingCoordinator wiring**
+- [x] **T-010 — HowItWorksView + OnboardingCoordinator wiring**
   - **Why**: Onboarding screen 5 + ties all 5 screens together.
   - **Do**: 
     Create `LiveCoach/Features/Onboarding/HowItWorksView.swift`. Takes `onComplete: () -> Void`. Layout: "Here's your daily routine" headline. Three numbered step cards (rounded rect background): "1 Morning check-in (5 min) — plan your day and get your 3 micro-actions", "2 Complete your micro-actions — small steps that add up", "3 Evening check-in (5 min) — reflect, score, and set up tomorrow". Below that: subscription card (rounded rect, light gray bg): "Live Coach Premium" title, "$19.99/month or $149.99/year", bullet list: "Unlimited chat · 60 voice minutes/week · Daily accountability". Two buttons: "Start Premium ($19.99/mo)" (primary, calls RevenueCat paywall stub — just `onComplete()` for now) and "Try free" (secondary, calls `onComplete()`). Note: RevenueCat paywall is wired in T-025.
@@ -669,7 +669,7 @@ proxy/
 
 ### Phase 3 — Home Tab
 
-- [ ] **T-011 — SessionService + HomeViewModel**
+- [x] **T-011 — SessionService + HomeViewModel**
   - **Why**: Loads today's session, micro-actions, and stats from the proxy.
   - **Do**:
     Create `LiveCoach/Services/SessionService.swift`:
@@ -726,7 +726,7 @@ proxy/
   - **Acceptance**: `xcodebuild -scheme LiveCoach -destination 'platform=iOS Simulator,name=iPhone 16' build 2>&1 | grep "BUILD SUCCEEDED"`. Write `LiveCoachTests/HomeViewModelTests.swift`: create a `HomeViewModel` with a fresh `SessionService`. Assert `dailyQuote` is empty before `load()`. Assert `shouldShowMorningCTA` and `shouldShowEveningCTA` return Bool without crashing. Tests pass.
   - **Depends on**: T-005, T-004
 
-- [ ] **T-012 — HomeView**
+- [x] **T-012 — HomeView**
   - **Why**: The main dashboard the user sees every day.
   - **Do**: Create `LiveCoach/Features/Home/HomeView.swift`. Uses `HomeViewModel` (create via `@State`). On appear calls `await viewModel.load()`.
 
@@ -752,7 +752,7 @@ proxy/
   - **Acceptance**: `xcodebuild -scheme LiveCoach -destination 'platform=iOS Simulator,name=iPhone 16' build 2>&1 | grep "BUILD SUCCEEDED"`.
   - **Depends on**: T-011
 
-- [ ] **T-013 — MainTabView + tab bar wiring**
+- [x] **T-013 — MainTabView + tab bar wiring**
   - **Why**: Connects all four tabs into the main app navigation.
   - **Do**: Create `LiveCoach/App/MainTabView.swift`:
     ```swift
@@ -790,7 +790,7 @@ proxy/
 
 ### Phase 4 — Project Tab
 
-- [ ] **T-014 — ProjectService + ProjectViewModel + ProjectView**
+- [x] **T-014 — ProjectService + ProjectViewModel + ProjectView**
   - **Why**: Displays the user's one active project and the history of daily micro-actions.
   - **Do**:
     Create `LiveCoach/Services/ProjectService.swift`:
@@ -834,7 +834,7 @@ proxy/
 
 ### Phase 5 — Calls Tab: Text Chat
 
-- [ ] **T-015 — ChatService (Together AI via proxy)**
+- [x] **T-015 — ChatService (Together AI via proxy)**
   - **Why**: Text chat with AI coach.
   - **Do**: Create `LiveCoach/Services/ChatService.swift`:
     ```swift
@@ -856,7 +856,7 @@ proxy/
   - **Acceptance**: `xcodebuild -scheme LiveCoach -destination 'platform=iOS Simulator,name=iPhone 16' build 2>&1 | grep "BUILD SUCCEEDED"`.
   - **Depends on**: T-005
 
-- [ ] **T-016 — CallsView + CallsListView**
+- [x] **T-016 — CallsView + CallsListView**
   - **Why**: Shows all conversations and lets the user start a new one.
   - **Do**: Replace stub `CallsView.swift` with real implementation. Uses `ChatService` (inject via environment or `@State`). NavigationStack.
 
@@ -877,7 +877,7 @@ proxy/
   - **Acceptance**: `xcodebuild -scheme LiveCoach -destination 'platform=iOS Simulator,name=iPhone 16' build 2>&1 | grep "BUILD SUCCEEDED"`.
   - **Depends on**: T-015, T-013
 
-- [ ] **T-017 — ConversationDetailView (streaming chat UI)**
+- [x] **T-017 — ConversationDetailView (streaming chat UI)**
   - **Why**: The core chat interface with streaming AI responses.
   - **Do**: Create `LiveCoach/Features/Calls/ConversationDetailView.swift`. Takes a `Conversation` (or conversation ID string) and `ChatService`.
 
@@ -906,7 +906,7 @@ proxy/
 
 ### Phase 6 — Voice Calls (VAPI)
 
-- [ ] **T-018 — VoiceCallService (VAPI integration)**
+- [x] **T-018 — VoiceCallService (VAPI integration)**
   - **Why**: VAPI powers the structured morning/evening voice check-ins.
   - **Do**: Research the VAPI Swift SDK at https://github.com/VapiAI/vapi-swift. If it is a valid Swift Package Manager package (has Package.swift), add it to `project.yml` under packages (url: `https://github.com/VapiAI/vapi-swift`, from the latest tag) and run `xcodegen generate`. If the SDK is NOT available via SPM, implement VAPI calls via their REST API: `POST https://api.vapi.ai/call/web` with bearer auth header `Authorization: Bearer {VAPI_PUBLIC_KEY}` and JSON body `{assistantId: "...", customer: {number: ""}}` to start a call, and use `URLSession` WebSocket or the returned call link.
 
@@ -937,7 +937,7 @@ proxy/
   - **Acceptance**: `xcodebuild -scheme LiveCoach -destination 'platform=iOS Simulator,name=iPhone 16' build 2>&1 | grep "BUILD SUCCEEDED"`. If VAPI SDK was added, verify it imports without error.
   - **Depends on**: T-005
 
-- [ ] **T-019 — VoiceCallView**
+- [x] **T-019 — VoiceCallView**
   - **Why**: In-call UI shown during morning/evening check-ins.
   - **Do**: Create `LiveCoach/Features/Calls/VoiceCallView.swift`. Takes `callType: ConversationType` and `voiceCallService: VoiceCallService`.
 
@@ -957,7 +957,7 @@ proxy/
   - **Acceptance**: `xcodebuild -scheme LiveCoach -destination 'platform=iOS Simulator,name=iPhone 16' build 2>&1 | grep "BUILD SUCCEEDED"`.
   - **Depends on**: T-018, T-012
 
-- [ ] **T-020 — Voice minutes quota + display**
+- [x] **T-020 — Voice minutes quota + display**
   - **Why**: Users need to see their remaining voice minutes and be gated when they exceed their quota.
   - **Do**: 
     In `VoiceCallService`, before starting a call, check `appState.userStats?.voiceMinutesRemainingThisWeek ?? 0 > 0` OR `appState.isPremium`. If not premium and 0 minutes remaining, throw `VoiceCallError.quotaExceeded`. Define `enum VoiceCallError: Error { case quotaExceeded; case notAvailableOnFreeTier }`. Non-premium users on free tier throw `notAvailableOnFreeTier` always.
@@ -974,7 +974,7 @@ proxy/
 
 ### Phase 7 — Profile Tab
 
-- [ ] **T-021 — SubscriptionService (RevenueCat)**
+- [x] **T-021 — SubscriptionService (RevenueCat)**
   - **Why**: Entitlement checks gate voice calls and unlimited chat.
   - **Do**: Create `LiveCoach/Services/SubscriptionService.swift`:
     ```swift
@@ -1000,7 +1000,7 @@ proxy/
   - **Acceptance**: `xcodebuild -scheme LiveCoach -destination 'platform=iOS Simulator,name=iPhone 16' build 2>&1 | grep "BUILD SUCCEEDED"`. Write test `LiveCoachTests/SubscriptionServiceTests.swift`: `SubscriptionService()` initializes without crash, `isPremium` is false by default. Test passes.
   - **Depends on**: T-004
 
-- [ ] **T-022 — ProfileView (full implementation)**
+- [x] **T-022 — ProfileView (full implementation)**
   - **Why**: Settings, subscription management, sign-out, account deletion.
   - **Do**: Replace stub `ProfileView.swift` with real implementation. Inject `AuthService`, `SubscriptionService` via environment or `@State`.
 
@@ -1026,7 +1026,7 @@ proxy/
   - **Acceptance**: `xcodebuild -scheme LiveCoach -destination 'platform=iOS Simulator,name=iPhone 16' build 2>&1 | grep "BUILD SUCCEEDED"`.
   - **Depends on**: T-021, T-020, T-013
 
-- [ ] **T-023 — NotificationService + NotificationSettingsView**
+- [x] **T-023 — NotificationService + NotificationSettingsView**
   - **Why**: Daily coaching reminders are key to retention.
   - **Do**: Create `LiveCoach/Services/NotificationService.swift`:
     ```swift
@@ -1060,7 +1060,7 @@ proxy/
 
 ### Phase 8 — Proxy Server
 
-- [ ] **T-024 — Proxy server scaffold**
+- [x] **T-024 — Proxy server scaffold**
   - **Why**: Foundation before any proxy routes can be written.
   - **Do**: Create `proxy/` directory with:
     
@@ -1133,7 +1133,7 @@ proxy/
   - **Acceptance**: `cd proxy && npx tsc --noEmit` exits 0. `cd proxy && npm test` passes the health check test.
   - **Depends on**: T-001
 
-- [ ] **T-025 — Firebase Admin + JWT middleware + /auth/init**
+- [x] **T-025 — Firebase Admin + JWT middleware + /auth/init**
   - **Why**: All proxy routes require verified Firebase JWT.
   - **Do**: 
     `proxy/src/services/firebase.ts`: Initialize `firebase-admin` from `FIREBASE_SERVICE_ACCOUNT_JSON` env var (base64 decode → parse JSON → `admin.initializeApp({credential: admin.credential.cert(parsed)})`). Export `adminAuth = admin.auth()`, `db = admin.firestore()`.
@@ -1146,7 +1146,7 @@ proxy/
   - **Acceptance**: `cd proxy && npx tsc --noEmit` exits 0. `cd proxy && npm test` passes.
   - **Depends on**: T-024
 
-- [ ] **T-026 — Encryption service + Postgres key store**
+- [x] **T-026 — Encryption service + Postgres key store**
   - **Why**: Core privacy feature — all user data encrypted before Firebase storage.
   - **Do**:
     `proxy/src/services/keyStore.ts`: 
@@ -1189,7 +1189,7 @@ proxy/
   - **Acceptance**: `cd proxy && npx tsc --noEmit` exits 0. `cd proxy && npm test` passes.
   - **Depends on**: T-025
 
-- [ ] **T-027 — /project routes**
+- [x] **T-027 — /project routes**
   - **Why**: iOS app needs to create and retrieve the user's project.
   - **Do**: `proxy/src/routes/project.ts`. All routes require auth middleware. All data stored in Firestore collection `projects` with document ID = `{userId}_active`.
     
@@ -1207,7 +1207,7 @@ proxy/
   - **Acceptance**: `cd proxy && npx tsc --noEmit` exits 0. `cd proxy && npm test` passes.
   - **Depends on**: T-026
 
-- [ ] **T-028 — /sessions routes**
+- [x] **T-028 — /sessions routes**
   - **Why**: Stores and retrieves daily micro-actions per day.
   - **Do**: `proxy/src/routes/sessions.ts`. All routes require auth middleware. Session documents in Firestore `sessions/{userId}_{YYYY-MM-DD}`.
     
