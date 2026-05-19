@@ -5,9 +5,11 @@ struct VoiceCallView: View {
     var voiceCallService: VoiceCallService
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppState.self) var appState
     @State private var pulse = false
     @State private var showToast = false
     @State private var dismissTask: Task<Void, Never>?
+    @State private var voiceCallError: VoiceCallError?
 
     var body: some View {
         ZStack {
@@ -53,10 +55,40 @@ struct VoiceCallView: View {
         }
         .task {
             do {
-                try await voiceCallService.startCall(type: callType)
+                try await voiceCallService.startCall(
+                    type: callType,
+                    isPremium: appState.isPremium,
+                    voiceMinutesRemaining: appState.userStats?.voiceMinutesRemainingThisWeek ?? 0
+                )
+            } catch let err as VoiceCallError {
+                voiceCallError = err
             } catch {
                 voiceCallService.error = error
             }
+        }
+        .alert(
+            "No Voice Minutes Remaining",
+            isPresented: Binding(
+                get: { voiceCallError == .quotaExceeded },
+                set: { if !$0 { voiceCallError = nil } }
+            )
+        ) {
+            Button("Go to Profile") { dismiss() }
+            Button("Cancel", role: .cancel) { dismiss() }
+        } message: {
+            Text("You've used all your voice minutes this week. Buy more in Profile.")
+        }
+        .alert(
+            "Subscription Required",
+            isPresented: Binding(
+                get: { voiceCallError == .notAvailableOnFreeTier },
+                set: { if !$0 { voiceCallError = nil } }
+            )
+        ) {
+            Button("Upgrade") { dismiss() }
+            Button("Cancel", role: .cancel) { dismiss() }
+        } message: {
+            Text("Voice calls require a Live Coach subscription.")
         }
         .onChange(of: voiceCallService.callState) { _, newState in
             if newState == .ended {

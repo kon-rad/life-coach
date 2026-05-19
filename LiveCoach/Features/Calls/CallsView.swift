@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct CallsView: View {
+    @Environment(AppState.self) var appState
     @State private var chatService = ChatService()
     @State private var filter = "All"
     @State private var showNewConversation = false
@@ -11,6 +12,13 @@ struct CallsView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
+                let minutesRemaining = appState.userStats?.voiceMinutesRemainingThisWeek ?? 0
+                if minutesRemaining < 10 {
+                    VoiceMinutesBanner(minutesRemaining: minutesRemaining)
+                        .padding(.horizontal)
+                        .padding(.top, 8)
+                }
+
                 Picker("Filter", selection: $filter) {
                     ForEach(["All", "Voice", "Chat"], id: \.self) { Text($0) }
                 }

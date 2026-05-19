@@ -1,5 +1,10 @@
 import Foundation
 
+enum VoiceCallError: Error, Equatable {
+    case quotaExceeded
+    case notAvailableOnFreeTier
+}
+
 @MainActor @Observable final class VoiceCallService {
     var callState: VoiceCallState = .idle
     var transcript: [Message] = []
@@ -13,7 +18,14 @@ import Foundation
     private let api = ProxyAPIClient.shared
     private var webSocketTask: URLSessionWebSocketTask?
 
-    func startCall(type: ConversationType) async throws {
+    func startCall(type: ConversationType, isPremium: Bool, voiceMinutesRemaining: Int) async throws {
+        if !isPremium {
+            throw VoiceCallError.notAvailableOnFreeTier
+        }
+        if voiceMinutesRemaining <= 0 {
+            throw VoiceCallError.quotaExceeded
+        }
+
         callState = .connecting
         error = nil
         transcript = []

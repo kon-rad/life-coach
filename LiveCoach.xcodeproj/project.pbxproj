@@ -53,6 +53,7 @@
 		D48B7FA99346BB15E281B790 /* ModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98B48AC39E61596329F1F01F /* ModelTests.swift */; };
 		E34BFE88CCC630378E762C4E /* ProjectViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC7FA69947E4F416B987B0E8 /* ProjectViewModel.swift */; };
 		E6CB19821E025B0AF08015C0 /* Speech.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FD0BECAD319B971983024C67 /* Speech.framework */; };
+		EA69700458512D225AD1617A /* VoiceMinutesBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = D69528D802F75667AA57CE21 /* VoiceMinutesBanner.swift */; };
 		EFA036BCA9F85E0ED83D4DD7 /* EditProjectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B0CB44A673E32F4E68A48C1 /* EditProjectView.swift */; };
 		F23B2AD1D8F218D5162B67FE /* ConversationDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB6F725D92216B9D01DF549A /* ConversationDetailView.swift */; };
 /* End PBXBuildFile section */
@@ -105,6 +106,7 @@
 		C1E6C7EF1F4C01C820B69E5D /* ProjectService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectService.swift; sourceTree = "<group>"; };
 		CA0E5C80AA83C8E8302D501A /* Project.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Project.swift; sourceTree = "<group>"; };
 		CFB154C4C39ABFA53B2EFAE2 /* UserStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserStats.swift; sourceTree = "<group>"; };
+		D69528D802F75667AA57CE21 /* VoiceMinutesBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceMinutesBanner.swift; sourceTree = "<group>"; };
 		DB6F725D92216B9D01DF549A /* ConversationDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationDetailView.swift; sourceTree = "<group>"; };
 		DC7FA69947E4F416B987B0E8 /* ProjectViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectViewModel.swift; sourceTree = "<group>"; };
 		E02E4DDB7AA77F92FC383AA0 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
@@ -155,6 +157,7 @@
 		566AFE89287BE65896F4369A /* Shared */ = {
 			isa = PBXGroup;
 			children = (
+				ABF4D2001B0DCE7201CB65CA /* Components */,
 				1D284C5D514781BCE196E69D /* Constants.swift */,
 			);
 			path = Shared;
@@ -266,6 +269,14 @@
 				5F11576F9BFD37992C37DACF /* VoiceCallView.swift */,
 			);
 			path = Calls;
+			sourceTree = "<group>";
+		};
+		ABF4D2001B0DCE7201CB65CA /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				D69528D802F75667AA57CE21 /* VoiceMinutesBanner.swift */,
+			);
+			path = Components;
 			sourceTree = "<group>";
 		};
 		C2FEF76CBA37D9D7BF7F0C87 = {
@@ -456,6 +467,7 @@
 				2A24B3E9BE494767D49EB821 /* UserStats.swift in Sources */,
 				65D065FC702C29FB15497BC9 /* VoiceCallService.swift in Sources */,
 				C34836A116A68F90832218E3 /* VoiceCallView.swift in Sources */,
+				EA69700458512D225AD1617A /* VoiceMinutesBanner.swift in Sources */,
 				47CFD208B7C9CF1448DDDA7B /* WelcomeView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
