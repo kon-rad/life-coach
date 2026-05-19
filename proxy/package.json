@@ -1,0 +1,30 @@
+{
+  "name": "livecoach-proxy",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "test": "jest --testPathPattern='src/__tests__'"
+  },
+  "dependencies": {
+    "express": "^4.18.0",
+    "firebase-admin": "^12.0.0",
+    "pg": "^8.11.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/express": "^4.17.0",
+    "@types/pg": "^8.11.0",
+    "@types/cors": "^2.8.0",
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.9.0",
+    "jest": "^29.0.0",
+    "ts-jest": "^29.0.0",
+    "@types/jest": "^29.0.0",
+    "supertest": "^6.3.0",
+    "@types/supertest": "^2.0.0"
+  }
+}

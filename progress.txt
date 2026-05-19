@@ -1,0 +1,26 @@
+T-001 VERIFY: BUILD SUCCEEDED, TEST SUCCEEDED (testPlaceholder passed)
+T-002 VERIFY: BUILD SUCCEEDED, TEST SUCCEEDED (4 model tests passed)
+T-003 VERIFY: BUILD SUCCEEDED, TEST SUCCEEDED (5 tests passed, testDailyQuotesCount passed, plutil lint OK)
+T-004
+T-004 VERIFY: BUILD SUCCEEDED, TEST SUCCEEDED (AppStateTests passed; guarded FirebaseApp.configure() during tests to avoid placeholder plist crash)
+T-005 VERIFY: BUILD SUCCEEDED, TEST SUCCEEDED (testAPIErrorHttpErrorDescription passed)
+T-006
+T-006 VERIFY: BUILD SUCCEEDED, TEST SUCCEEDED (testAuthServiceInitializesWithoutCrash and testCurrentFirebaseUserIsNilWhenNoUserSignedIn passed; FirebaseApp.app() guard prevents crash in tests)
+T-007 VERIFY: BUILD SUCCEEDED
+T-008 VERIFY: BUILD SUCCEEDED
+T-009 VERIFY: BUILD SUCCEEDED
+T-010 VERIFY: BUILD SUCCEEDED
+T-011 VERIFY: BUILD SUCCEEDED, TEST SUCCEEDED (testDailyQuoteEmptyBeforeLoad and testShouldShowCTAsReturnBoolWithoutCrash passed)
+T-012 VERIFY: BUILD SUCCEEDED
+T-013 VERIFY: BUILD SUCCEEDED
+T-014 VERIFY: BUILD SUCCEEDED
+T-015 VERIFY: BUILD SUCCEEDED
+T-016 VERIFY: BUILD SUCCEEDED
+T-017 VERIFY: BUILD SUCCEEDED
+T-018 VERIFY: BUILD SUCCEEDED (VoiceCallService created using URLSession WebSocket; VAPI Swift SDK not found at VapiAI/vapi-swift so REST/WebSocket approach used)
+T-019 VERIFY: BUILD SUCCEEDED (VoiceCallView implemented with waveform pulse animation, transcript bubbles, end-call button, auto-dismiss toast on .ended state; HomeView updated to use .fullScreenCover with VoiceCallService)
+T-020 VERIFY: BUILD SUCCEEDED (VoiceCallError enum added; startCall gated on isPremium/voiceMinutesRemaining; VoiceCallView shows quota and free-tier alerts; VoiceMinutesBanner component created; ProfileView voice minutes row added; CallsView shows banner when minutes < 10)
+T-021 VERIFY: BUILD SUCCEEDED, TEST SUCCEEDED (testSubscriptionServiceInitializesWithoutCrash and testIsPremiumIsFalseByDefault passed)
+T-022 VERIFY: BUILD SUCCEEDED (ProfileView full implementation: header with initials avatar + editable name, subscription section with plan badge/VoiceMinutesBanner/upgrade-paywall/credits/restore, settings NavigationLink, privacy/export/delete-account with double confirmation, sign-out; SubscriptionPaywallView and VoiceCreditsSheet in SubscriptionView.swift; NotificationSettingsView stub)
+T-023 VERIFY: BUILD SUCCEEDED (NotificationService created with requestPermission/scheduleCheckInReminders/scheduleStreakReminder/cancelAll; NotificationSettingsView with DatePicker rows and streak Toggle; permission requested and defaults scheduled in completeOnboarding())
+T-024 VERIFY: tsc --noEmit exits 0, npm test passed (health check test passed)
