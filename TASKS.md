@@ -1,4 +1,4 @@
-# Live Coach — Ralph Loop Task Spec
+# Life Coach App — Ralph Loop Task Spec
 
 > **For the Ralph loop:** `ralph.sh` runs a fresh Claude on every iteration. Pick the first unchecked task in **§7 Task List**, implement it end-to-end, verify against its **Acceptance** block, commit, append the task ID + VERIFY line to `progress.txt`, then exit. Do **one task per iteration**. Tasks are ordered so dependencies resolve naturally — do not skip ahead.
 
@@ -375,7 +375,7 @@ proxy/
 - [x] **T-003 — Constants + Info.plist privacy strings**
   - **Why**: Privacy strings are required by App Store / iOS for mic and speech. Constants centralizes config.
   - **Do**:
-    - Add to `LiveCoach/Info.plist`: `NSMicrophoneUsageDescription` = `"Live Coach uses the microphone for voice check-ins with your AI coach."`, `NSSpeechRecognitionUsageDescription` = `"Live Coach transcribes your spoken goal during onboarding."`, `NSUserNotificationUsageDescription` = `"Live Coach sends daily coaching reminders."`, `UIBackgroundModes` array containing `"remote-notification"`, `CFBundleURLTypes` array with one item: `{"CFBundleURLSchemes":["com.googleusercontent.apps.REPLACE_ME"]}` (placeholder for Google Sign-In reverse client ID).
+    - Add to `LiveCoach/Info.plist`: `NSMicrophoneUsageDescription` = `"Life Coach App uses the microphone for voice check-ins with your AI coach."`, `NSSpeechRecognitionUsageDescription` = `"Life Coach App transcribes your spoken goal during onboarding."`, `NSUserNotificationUsageDescription` = `"Life Coach App sends daily coaching reminders."`, `UIBackgroundModes` array containing `"remote-notification"`, `CFBundleURLTypes` array with one item: `{"CFBundleURLSchemes":["com.googleusercontent.apps.REPLACE_ME"]}` (placeholder for Google Sign-In reverse client ID).
     - Create `LiveCoach/Shared/Constants.swift`:
       ```swift
       import Foundation
@@ -625,13 +625,13 @@ proxy/
 - [x] **T-008 — WelcomeView + PrivacyView**
   - **Why**: Onboarding screens 1 and 2.
   - **Do**: 
-    Create `LiveCoach/Features/Onboarding/WelcomeView.swift`. Full-screen VStack: gradient background (from Color(.systemIndigo) to Color(.systemPurple)), white "Live Coach" title (largeTitle, bold), "Your AI life coach. Private by design." subtitle, three feature rows (Image(systemName: ...) icon + text):
+    Create `LiveCoach/Features/Onboarding/WelcomeView.swift`. Full-screen VStack: gradient background (from Color(.systemIndigo) to Color(.systemPurple)), white "Life Coach App" title (largeTitle, bold), "Your AI life coach. Private by design." subtitle, three feature rows (Image(systemName: ...) icon + text):
     - mic.fill — "Daily 5-minute voice check-ins with your AI coach"
     - checkmark.circle.fill — "Three micro-actions every day that move you forward"  
     - lock.shield.fill — "Your data is encrypted. We cannot read it."
     Bottom: "Get Started" button (white, rounded, full-width) calls `onNext()` closure.
 
-    Create `LiveCoach/Features/Onboarding/PrivacyView.swift`. White background. "Your conversations are yours alone." headline (title2, bold). Body text: "Live Coach uses end-to-end encryption. Your conversations, goals, and progress are encrypted with a key only you control. We store ciphertext — not your words." Three bullet rows:
+    Create `LiveCoach/Features/Onboarding/PrivacyView.swift`. White background. "Your conversations are yours alone." headline (title2, bold). Body text: "Life Coach App uses end-to-end encryption. Your conversations, goals, and progress are encrypted with a key only you control. We store ciphertext — not your words." Three bullet rows:
     - checkmark.shield — "Anonymous to AI — the AI never sees your name or email"
     - lock.fill — "Encrypted at rest — your Firebase data is unreadable without your key"  
     - hand.raised.slash — "No selling, no training — your data is never used to train AI models"
@@ -650,7 +650,7 @@ proxy/
 - [x] **T-010 — HowItWorksView + OnboardingCoordinator wiring**
   - **Why**: Onboarding screen 5 + ties all 5 screens together.
   - **Do**: 
-    Create `LiveCoach/Features/Onboarding/HowItWorksView.swift`. Takes `onComplete: () -> Void`. Layout: "Here's your daily routine" headline. Three numbered step cards (rounded rect background): "1 Morning check-in (5 min) — plan your day and get your 3 micro-actions", "2 Complete your micro-actions — small steps that add up", "3 Evening check-in (5 min) — reflect, score, and set up tomorrow". Below that: subscription card (rounded rect, light gray bg): "Live Coach Premium" title, "$19.99/month or $149.99/year", bullet list: "Unlimited chat · 60 voice minutes/week · Daily accountability". Two buttons: "Start Premium ($19.99/mo)" (primary, calls RevenueCat paywall stub — just `onComplete()` for now) and "Try free" (secondary, calls `onComplete()`). Note: RevenueCat paywall is wired in T-025.
+    Create `LiveCoach/Features/Onboarding/HowItWorksView.swift`. Takes `onComplete: () -> Void`. Layout: "Here's your daily routine" headline. Three numbered step cards (rounded rect background): "1 Morning check-in (5 min) — plan your day and get your 3 micro-actions", "2 Complete your micro-actions — small steps that add up", "3 Evening check-in (5 min) — reflect, score, and set up tomorrow". Below that: subscription card (rounded rect, light gray bg): "Life Coach App Premium" title, "$19.99/month or $149.99/year", bullet list: "Unlimited chat · 60 voice minutes/week · Daily accountability". Two buttons: "Start Premium ($19.99/mo)" (primary, calls RevenueCat paywall stub — just `onComplete()` for now) and "Try free" (secondary, calls `onComplete()`). Note: RevenueCat paywall is wired in T-025.
 
     Replace `OnboardingCoordinatorView.swift` entirely: use `@State var step: Int = 0` and `@State var goalText: String = ""`. Switch on `step`:
     - 0 → `WelcomeView(onNext: { step = 1 })`
@@ -962,7 +962,7 @@ proxy/
   - **Do**: 
     In `VoiceCallService`, before starting a call, check `appState.userStats?.voiceMinutesRemainingThisWeek ?? 0 > 0` OR `appState.isPremium`. If not premium and 0 minutes remaining, throw `VoiceCallError.quotaExceeded`. Define `enum VoiceCallError: Error { case quotaExceeded; case notAvailableOnFreeTier }`. Non-premium users on free tier throw `notAvailableOnFreeTier` always.
 
-    In `VoiceCallView`, catch these errors and show an alert: for `quotaExceeded` → "You've used all your voice minutes this week. Buy more in Profile." with "Go to Profile" + "Cancel" buttons. For `notAvailableOnFreeTier` → "Voice calls require a Live Coach subscription." with "Upgrade" + "Cancel".
+    In `VoiceCallView`, catch these errors and show an alert: for `quotaExceeded` → "You've used all your voice minutes this week. Buy more in Profile." with "Go to Profile" + "Cancel" buttons. For `notAvailableOnFreeTier` → "Voice calls require a Life Coach App subscription." with "Upgrade" + "Cancel".
 
     In `ProfileView` (stub), add a voice minutes row: "🎙 [N] / 60 minutes used this week" using `appState.userStats?.totalVoiceSecondsUsed`.
 
@@ -1274,7 +1274,7 @@ proxy/
   - **Acceptance**: `cd proxy && npx tsc --noEmit` exits 0. `cd proxy && npm test` passes.
   - **Depends on**: T-026
 
-- [ ] **T-031 — /vapi routes (init-call + system prompt injection)**
+- [x] **T-031 — /vapi routes (init-call + system prompt injection)**
   - **Why**: Each VAPI call needs context (project, recent sessions) injected into the assistant's system prompt.
   - **Do**: `proxy/src/services/vapi.ts`:
     ```typescript
@@ -1375,7 +1375,7 @@ proxy/
     2. Query `conversations` for today's date and count total messages where `role == "user"` across all conversations
     3. If count >= `Constants.freeTierDailyMessageLimit` (10), return `HTTP 402 {error: "daily_limit_reached", message: "Free tier limit of 10 messages per day reached. Upgrade to Premium for unlimited chat."}`
     
-    In `LiveCoach/Services/ChatService.swift` `sendMessage()`: handle `APIError.httpError(402, ...)` — parse the error body and throw a typed error `ChatError.dailyLimitReached`. In `ConversationDetailView`, catch this error and present an alert: "You've reached your free limit of 10 messages today. Upgrade to Live Coach Premium for unlimited chat." with "Upgrade" (→ subscription sheet) and "OK" buttons.
+    In `LiveCoach/Services/ChatService.swift` `sendMessage()`: handle `APIError.httpError(402, ...)` — parse the error body and throw a typed error `ChatError.dailyLimitReached`. In `ConversationDetailView`, catch this error and present an alert: "You've reached your free limit of 10 messages today. Upgrade to Life Coach App Premium for unlimited chat." with "Upgrade" (→ subscription sheet) and "OK" buttons.
     
     In `LiveCoach/Shared/Constants.swift`, add `static let freeTierDailyMessageLimit = 10` (already added in T-003).
     
@@ -1429,7 +1429,7 @@ proxy/
     In `SubscriptionService.fetchOfferings()`: call `Purchases.shared.offerings()` and extract `current.availablePackages`. In `ProfileView` "Upgrade plan" button: call `subscriptionService.fetchOfferings()` then present a `SubscriptionPaywallView` sheet.
     
     Create `LiveCoach/Features/Profile/SubscriptionPaywallView.swift`: Takes `packages: [Package]` and `subscriptionService: SubscriptionService`. Shows:
-    - "Live Coach Premium" title
+    - "Life Coach App Premium" title
     - Feature list: "✓ Unlimited text chat", "✓ 60 voice minutes/week", "✓ Daily accountability", "✓ All your data encrypted"
     - Monthly package button (shows price from RevenueCat): "Monthly — $X.XX/month"
     - Annual package button: "Annual — $XX.XX/year (save X%)" — compute savings percentage
