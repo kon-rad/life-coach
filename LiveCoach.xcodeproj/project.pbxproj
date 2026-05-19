@@ -11,6 +11,7 @@
 		058FAD5378E2F3A7D8413314 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A9A8AB598251EDB6CD11997 /* ProfileView.swift */; };
 		094A9C1E5DE06A45E03E1BE7 /* APIError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 443F9DBD44C7CAFBA5EC857B /* APIError.swift */; };
 		14108DCB1A772A63B36137DF /* PrivacyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81FB6FB0942A3946F7CCE901 /* PrivacyView.swift */; };
+		1F5E1173A5ADB14703431B45 /* SubscriptionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 725B3A63CB5171A1388A969E /* SubscriptionView.swift */; };
 		2A24B3E9BE494767D49EB821 /* UserStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFB154C4C39ABFA53B2EFAE2 /* UserStats.swift */; };
 		2C861A7451057B5A20ACE2C1 /* LiveCoachApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC98D08ED019866B3B017AF1 /* LiveCoachApp.swift */; };
 		3EA9E02DF52EBE49A54CDE03 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 6DDF4A03C284D79D56E84820 /* RevenueCat */; };
@@ -18,6 +19,7 @@
 		3F6E5D70C291B8D2EE85D944 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7D4CDD05603602B7DD8FFD93 /* Assets.xcassets */; };
 		47CFD208B7C9CF1448DDDA7B /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E02E4DDB7AA77F92FC383AA0 /* WelcomeView.swift */; };
 		4892C998822A768F6EFFB049 /* ProxyAPIClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44693D5E3B80C375A95ECA32 /* ProxyAPIClientTests.swift */; };
+		49A24FE26BE5A89639056470 /* NotificationSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 667E7A68F98FFBE25AD42310 /* NotificationSettingsView.swift */; };
 		4CF17E0F6EC2A38076506F2B /* ProjectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C41B04199064248AAF6F14C /* ProjectView.swift */; };
 		4E546818AA249392F2F14668 /* NewConversationSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7080E0639349FFAFBC55EE0D /* NewConversationSheet.swift */; };
 		55FB2799775631529ED4F4C6 /* SubscriptionServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9858BC3D0BA9BCCC6BCED224 /* SubscriptionServiceTests.swift */; };
@@ -90,9 +92,11 @@
 		5A9A8AB598251EDB6CD11997 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		5E4424D2E1C91B40F94E0124 /* AppStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStateTests.swift; sourceTree = "<group>"; };
 		5F11576F9BFD37992C37DACF /* VoiceCallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceCallView.swift; sourceTree = "<group>"; };
+		667E7A68F98FFBE25AD42310 /* NotificationSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationSettingsView.swift; sourceTree = "<group>"; };
 		6D5FC912E7B4107347BDEDA0 /* CallsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallsListView.swift; sourceTree = "<group>"; };
 		7080E0639349FFAFBC55EE0D /* NewConversationSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewConversationSheet.swift; sourceTree = "<group>"; };
 		71D351B84C4C394E286B53DC /* SessionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionService.swift; sourceTree = "<group>"; };
+		725B3A63CB5171A1388A969E /* SubscriptionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionView.swift; sourceTree = "<group>"; };
 		764299C688BA12DE45EDE81E /* VoiceCallService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceCallService.swift; sourceTree = "<group>"; };
 		778D229820169B401E0B96A3 /* GoalInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalInputView.swift; sourceTree = "<group>"; };
 		7D4CDD05603602B7DD8FFD93 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -260,7 +264,9 @@
 		A3A9A87BE43393BC76104A7C /* Profile */ = {
 			isa = PBXGroup;
 			children = (
+				667E7A68F98FFBE25AD42310 /* NotificationSettingsView.swift */,
 				5A9A8AB598251EDB6CD11997 /* ProfileView.swift */,
+				725B3A63CB5171A1388A969E /* SubscriptionView.swift */,
 			);
 			path = Profile;
 			sourceTree = "<group>";
@@ -458,6 +464,7 @@
 				A080AA4E41F5A620A6D147B5 /* MainTabView.swift in Sources */,
 				5AA17575AFA99423ED0AB4B1 /* MicroActionRowView.swift in Sources */,
 				4E546818AA249392F2F14668 /* NewConversationSheet.swift in Sources */,
+				49A24FE26BE5A89639056470 /* NotificationSettingsView.swift in Sources */,
 				AA4904B967BE0A97B160CFD8 /* OnboardingCoordinatorView.swift in Sources */,
 				14108DCB1A772A63B36137DF /* PrivacyView.swift in Sources */,
 				058FAD5378E2F3A7D8413314 /* ProfileView.swift in Sources */,
@@ -471,6 +478,7 @@
 				C04FAF24CE00B283191C1041 /* SignInView.swift in Sources */,
 				79DE8F8DFC30C81A5A6AEE75 /* StatsGridView.swift in Sources */,
 				BCAC89F90E56B20F49D3512F /* SubscriptionService.swift in Sources */,
+				1F5E1173A5ADB14703431B45 /* SubscriptionView.swift in Sources */,
 				6A912F079E92D26766376D86 /* User.swift in Sources */,
 				2A24B3E9BE494767D49EB821 /* UserStats.swift in Sources */,
 				65D065FC702C29FB15497BC9 /* VoiceCallService.swift in Sources */,
