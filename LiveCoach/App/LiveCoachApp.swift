@@ -9,6 +9,9 @@ struct LiveCoachApp: App {
     init() {
         guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else { return }
         FirebaseApp.configure()
+        #if DEBUG
+        Purchases.logLevel = .debug
+        #endif
         Purchases.configure(withAPIKey: Constants.revenueCatAPIKey)
     }
 
