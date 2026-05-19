@@ -32,6 +32,14 @@ struct OnboardingCoordinatorView: View {
         }
         let body = ProjectBody(title: goalText, description: "")
         _ = try? await ProxyAPIClient.shared.post("/project", body: body) as Project
+        let granted = await NotificationService.shared.requestPermission()
+        if granted {
+            NotificationService.shared.scheduleCheckInReminders(
+                morningHour: 8, morningMinute: 0,
+                eveningHour: 21, eveningMinute: 0
+            )
+            NotificationService.shared.scheduleStreakReminder(enabled: true)
+        }
         UserDefaults.standard.set(true, forKey: "isOnboardingComplete")
         appState.isOnboardingComplete = true
     }

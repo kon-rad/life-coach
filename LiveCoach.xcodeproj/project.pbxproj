@@ -49,6 +49,7 @@
 		BA872ACF55E1B106FFA475BB /* HomeViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 884053719A5366792468A89D /* HomeViewModelTests.swift */; };
 		BCAC89F90E56B20F49D3512F /* SubscriptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A6CF7C87697225E009BE153 /* SubscriptionService.swift */; };
 		C04FAF24CE00B283191C1041 /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F09895923293B944363802DC /* SignInView.swift */; };
+		C1A650983CE0E45B783887BE /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FE56C101A54EB5CF556AE50 /* NotificationService.swift */; };
 		C34836A116A68F90832218E3 /* VoiceCallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F11576F9BFD37992C37DACF /* VoiceCallView.swift */; };
 		C4B8A65CB9502DD126033A15 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38E5D4B9514EAC3089AD1A71 /* HomeView.swift */; };
 		C78816C9A695E143D2A5A329 /* Conversation.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF2E7D1997178DD4C717C0B5 /* Conversation.swift */; };
@@ -94,6 +95,7 @@
 		5F11576F9BFD37992C37DACF /* VoiceCallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceCallView.swift; sourceTree = "<group>"; };
 		667E7A68F98FFBE25AD42310 /* NotificationSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationSettingsView.swift; sourceTree = "<group>"; };
 		6D5FC912E7B4107347BDEDA0 /* CallsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallsListView.swift; sourceTree = "<group>"; };
+		6FE56C101A54EB5CF556AE50 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		7080E0639349FFAFBC55EE0D /* NewConversationSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewConversationSheet.swift; sourceTree = "<group>"; };
 		71D351B84C4C394E286B53DC /* SessionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionService.swift; sourceTree = "<group>"; };
 		725B3A63CB5171A1388A969E /* SubscriptionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionView.swift; sourceTree = "<group>"; };
@@ -223,6 +225,7 @@
 			children = (
 				475C26050CA580B17C9AABDA /* AuthService.swift */,
 				FF61DC853A12F52D5ADF7652 /* ChatService.swift */,
+				6FE56C101A54EB5CF556AE50 /* NotificationService.swift */,
 				C1E6C7EF1F4C01C820B69E5D /* ProjectService.swift */,
 				71D351B84C4C394E286B53DC /* SessionService.swift */,
 				2A6CF7C87697225E009BE153 /* SubscriptionService.swift */,
@@ -464,6 +467,7 @@
 				A080AA4E41F5A620A6D147B5 /* MainTabView.swift in Sources */,
 				5AA17575AFA99423ED0AB4B1 /* MicroActionRowView.swift in Sources */,
 				4E546818AA249392F2F14668 /* NewConversationSheet.swift in Sources */,
+				C1A650983CE0E45B783887BE /* NotificationService.swift in Sources */,
 				49A24FE26BE5A89639056470 /* NotificationSettingsView.swift in Sources */,
 				AA4904B967BE0A97B160CFD8 /* OnboardingCoordinatorView.swift in Sources */,
 				14108DCB1A772A63B36137DF /* PrivacyView.swift in Sources */,
