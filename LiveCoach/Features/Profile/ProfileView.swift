@@ -185,6 +185,7 @@ struct ProfileView: View {
                 do {
                     try authService.signOut()
                     UserDefaults.standard.removeObject(forKey: "isOnboardingComplete")
+                    appState.clearAll()
                     appState.isOnboardingComplete = false
                 } catch {
                     errorMessage = error.localizedDescription
@@ -216,6 +217,7 @@ struct ProfileView: View {
         do {
             try await authService.deleteAccount()
             UserDefaults.standard.removeObject(forKey: "isOnboardingComplete")
+            appState.clearAll()
             appState.isOnboardingComplete = false
         } catch {
             errorMessage = error.localizedDescription

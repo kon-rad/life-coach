@@ -1,7 +1,6 @@
 import { Router, Response } from 'express';
 import { db } from '../services/firebase';
 import { encrypt, decrypt, encryptJSON, decryptJSON } from '../services/encryption';
-import { deleteUserKey } from '../services/keyStore';
 import { authMiddleware, AuthedRequest } from '../middleware/auth';
 
 const router = Router();
@@ -74,9 +73,9 @@ router.get('/profile', async (req, res: Response) => {
     }
 
     const data = doc.data() as UserDoc;
-    const displayName = data.displayName ? await decrypt(data.displayName, uid) : '';
+    const displayName = data.displayName ? await decrypt(data.displayName) : '';
     const notificationSettings: NotificationSettings = data.notificationSettings
-      ? await decryptJSON<NotificationSettings>(data.notificationSettings, uid)
+      ? await decryptJSON<NotificationSettings>(data.notificationSettings)
       : {
           morningReminderHour: 8,
           morningReminderMinute: 0,
@@ -112,10 +111,10 @@ router.put('/profile', async (req, res: Response) => {
     const update: Record<string, unknown> = {};
 
     if (displayName !== undefined) {
-      update.displayName = await encrypt(displayName, uid);
+      update.displayName = await encrypt(displayName);
     }
     if (notificationSettings !== undefined) {
-      update.notificationSettings = await encryptJSON(notificationSettings, uid);
+      update.notificationSettings = await encryptJSON(notificationSettings);
     }
     if (fcmToken !== undefined) {
       update.fcmToken = fcmToken;
@@ -158,7 +157,7 @@ router.get('/stats', async (req, res: Response) => {
       snapshot.docs.map(async (doc) => {
         const data = doc.data() as SessionDoc;
         const microActions: MicroAction[] = data.microActions
-          ? await decryptJSON<MicroAction[]>(data.microActions, uid)
+          ? await decryptJSON<MicroAction[]>(data.microActions)
           : [];
 
         sessionsByDate.set(data.date, microActions);
@@ -223,8 +222,6 @@ router.delete('/', async (req, res: Response) => {
     batch.delete(db.collection('users').doc(uid));
 
     await batch.commit();
-    await deleteUserKey(uid);
-
     res.json({ deleted: true });
   } catch {
     res.status(500).json({ error: 'Internal server error' });

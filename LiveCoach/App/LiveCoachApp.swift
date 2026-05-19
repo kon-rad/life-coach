@@ -27,6 +27,8 @@ struct LiveCoachApp: App {
             RootView()
                 .environment(appState)
                 .onAppear {
+                    guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else { return }
+                    guard !DemoMode.isEnabled else { return }
                     Purchases.shared.delegate = revenueCatDelegate
                     revenueCatDelegate.onPremiumStatusChange = { [appState] isPremium in
                         Task { @MainActor in

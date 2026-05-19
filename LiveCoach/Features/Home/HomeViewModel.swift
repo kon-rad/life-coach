@@ -35,6 +35,7 @@ import Foundation
             appState?.userStats = stats
         } catch {
             self.error = error
+            appState?.setError(error)
         }
     }
 

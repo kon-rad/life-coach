@@ -128,7 +128,7 @@ router.post('/vapi', async (req: Request, res: Response) => {
 
       const sessionRef = db.collection('sessions').doc(sessionId);
       const sessionDoc = await sessionRef.get();
-      const encryptedMicroActions = await encryptJSON(microActions, userId);
+      const encryptedMicroActions = await encryptJSON(microActions);
 
       if (sessionDoc.exists) {
         await sessionRef.update({
@@ -158,7 +158,6 @@ router.post('/vapi', async (req: Request, res: Response) => {
               timestamp: new Date().toISOString(),
             },
           ],
-          userId,
         );
         await db.collection('conversations').doc(conversationId).update({
           messages: encryptedMessages,
@@ -190,7 +189,7 @@ router.post('/vapi', async (req: Request, res: Response) => {
       if (sessionDoc.exists) {
         const data = sessionDoc.data() as SessionDoc;
         if (data.microActions) {
-          existingMicroActions = await decryptJSON<MicroAction[]>(data.microActions, userId);
+          existingMicroActions = await decryptJSON<MicroAction[]>(data.microActions);
         }
       }
 
@@ -203,9 +202,9 @@ router.post('/vapi', async (req: Request, res: Response) => {
       }));
 
       const conversationId = await findConversationByVapiCallId(userId, callId);
-      const encryptedMicroActions = await encryptJSON(updatedMicroActions, userId);
-      const encryptedScoreRationale = await encrypt(scoreRationale, userId);
-      const encryptedTomorrowActions = await encryptJSON(tomorrowMicroActions, userId);
+      const encryptedMicroActions = await encryptJSON(updatedMicroActions);
+      const encryptedScoreRationale = await encrypt(scoreRationale);
+      const encryptedTomorrowActions = await encryptJSON(tomorrowMicroActions);
 
       if (sessionDoc.exists) {
         await sessionRef.update({
@@ -237,7 +236,7 @@ router.post('/vapi', async (req: Request, res: Response) => {
         await tomorrowRef.set({
           userId,
           date: tomorrow,
-          microActions: await encryptJSON([], userId),
+          microActions: await encryptJSON([]),
           morningCallId: null,
           eveningCallId: null,
           score: null,
@@ -269,7 +268,6 @@ router.post('/vapi', async (req: Request, res: Response) => {
               timestamp: new Date().toISOString(),
             },
           ],
-          userId,
         );
         await db.collection('conversations').doc(conversationId).update({
           messages: encryptedMessages,

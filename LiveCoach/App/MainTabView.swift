@@ -4,26 +4,37 @@ struct MainTabView: View {
     @Environment(AppState.self) var appState
     @State private var sessionService = SessionService()
     @State private var subscriptionService = SubscriptionService()
+    @State private var isDataLoading = true
     private let api = ProxyAPIClient.shared
 
     var body: some View {
-        TabView {
-            HomeView()
-                .tabItem { Label("Home", systemImage: "house.fill") }
-            ProjectView()
-                .tabItem { Label("Project", systemImage: "target") }
-            CallsView()
-                .tabItem { Label("Calls", systemImage: "mic.fill") }
-            ProfileView()
-                .tabItem { Label("Profile", systemImage: "person.fill") }
+        Group {
+            if isDataLoading {
+                ProgressView("Loading…")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                TabView {
+                    HomeView()
+                        .tabItem { Label("Home", systemImage: "house.fill") }
+                    ProjectView()
+                        .tabItem { Label("Project", systemImage: "target") }
+                    CallsView()
+                        .tabItem { Label("Calls", systemImage: "mic.fill") }
+                    ProfileView()
+                        .tabItem { Label("Profile", systemImage: "person.fill") }
+                }
+                .environment(sessionService)
+            }
         }
-        .environment(sessionService)
         .task {
+            defer { isDataLoading = false }
             guard !DemoMode.isEnabled else { return }
             do {
                 appState.currentUser = try await api.get("/user/profile")
-            } catch {}
-            guard appState.currentUser != nil else { return }
+            } catch {
+                appState.setError(error)
+                return
+            }
             async let projectLoad: Project? = try? api.get("/project")
             async let statsLoad: UserStats? = try? api.get("/user/stats")
             appState.currentProject = await projectLoad

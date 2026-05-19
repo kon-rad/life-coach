@@ -1446,7 +1446,7 @@ proxy/
   - **Acceptance**: `xcodebuild -scheme LiveCoach -destination 'platform=iOS Simulator,name=iPhone 16' build 2>&1 | grep "BUILD SUCCEEDED"`.
   - **Depends on**: T-021, T-020, T-010
 
-- [ ] **T-038 — Project description auto-generation + onboarding project creation**
+- [x] **T-038 — Project description auto-generation + onboarding project creation**
   - **Why**: After the user enters their goal, the AI generates a 2-3 sentence project description. This should also be persisted and shown in the Project tab.
   - **Do**:
     In `OnboardingCoordinatorView.completeOnboarding()`: after calling `POST /project`, poll `GET /project` once every 2 seconds up to 10 seconds to wait for the AI-generated description to appear (description is non-empty). After the poll or timeout, update `appState.currentProject` with the fetched project.
@@ -1468,7 +1468,7 @@ proxy/
   - **Acceptance**: `xcodebuild -scheme LiveCoach -destination 'platform=iOS Simulator,name=iPhone 16' build 2>&1 | grep "BUILD SUCCEEDED"`. `cd proxy && npx tsc --noEmit && npm test` passes.
   - **Depends on**: T-014, T-027
 
-- [ ] **T-039 — Final wiring: AppState sync + error handling + loading states**
+- [x] **T-039 — Final wiring: AppState sync + error handling + loading states**
   - **Why**: Wire all the loose ends so data flows correctly end-to-end across all tabs.
   - **Do**:
     1. In `MainTabView.task {}`: Load and populate `appState.currentUser` from `GET /user/profile`, `appState.currentProject` from `GET /project`, `appState.userStats` from `GET /user/stats`, `appState.isPremium` from `subscriptionService.fetchStatus()`. Show a full-screen `ProgressView` while loading (loading gate in `RootView` or `MainTabView`).

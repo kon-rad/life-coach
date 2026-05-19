@@ -41,9 +41,6 @@ jest.mock('../services/encryption', () => ({
   ),
 }));
 
-jest.mock('../services/keyStore', () => ({
-  deleteUserKey: jest.fn().mockResolvedValue(undefined),
-}));
 
 const { db } = jest.requireMock('../services/firebase') as {
   db: {
@@ -60,9 +57,6 @@ const { db } = jest.requireMock('../services/firebase') as {
   };
 };
 
-const { deleteUserKey } = jest.requireMock('../services/keyStore') as {
-  deleteUserKey: jest.Mock;
-};
 
 function makeActions(
   completed: boolean[],
@@ -367,7 +361,7 @@ describe('DELETE /user', () => {
     };
   }
 
-  it('deletes all sessions, conversations, project, and user docs, then calls deleteUserKey', async () => {
+  it('deletes all sessions, conversations, project, and user docs', async () => {
     const batchMock = makeBatch();
     db.batch.mockReturnValue(batchMock);
 
@@ -386,7 +380,6 @@ describe('DELETE /user', () => {
     // 3 sessions + 2 conversations + project doc + user doc = 7 deletes
     expect(batchMock.delete).toHaveBeenCalledTimes(7);
     expect(batchMock.commit).toHaveBeenCalledTimes(1);
-    expect(deleteUserKey).toHaveBeenCalledWith('user1');
   });
 
   it('works correctly when user has no sessions or conversations', async () => {
@@ -404,6 +397,5 @@ describe('DELETE /user', () => {
     expect(res.status).toBe(200);
     // project doc + user doc = 2 deletes
     expect(batchMock.delete).toHaveBeenCalledTimes(2);
-    expect(deleteUserKey).toHaveBeenCalledWith('user1');
   });
 });
