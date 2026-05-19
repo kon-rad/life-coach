@@ -24,3 +24,5 @@ T-021 VERIFY: BUILD SUCCEEDED, TEST SUCCEEDED (testSubscriptionServiceInitialize
 T-022 VERIFY: BUILD SUCCEEDED (ProfileView full implementation: header with initials avatar + editable name, subscription section with plan badge/VoiceMinutesBanner/upgrade-paywall/credits/restore, settings NavigationLink, privacy/export/delete-account with double confirmation, sign-out; SubscriptionPaywallView and VoiceCreditsSheet in SubscriptionView.swift; NotificationSettingsView stub)
 T-023 VERIFY: BUILD SUCCEEDED (NotificationService created with requestPermission/scheduleCheckInReminders/scheduleStreakReminder/cancelAll; NotificationSettingsView with DatePicker rows and streak Toggle; permission requested and defaults scheduled in completeOnboarding())
 T-024 VERIFY: tsc --noEmit exits 0, npm test passed (health check test passed)
+T-025 VERIFY: tsc --noEmit exits 0, npm test passed (3 auth middleware tests + 1 health test passed)
+T-026 VERIFY: tsc --noEmit exits 0, npm test passed (4 encryption tests + 3 auth tests + 1 health test = 8 tests passed)
