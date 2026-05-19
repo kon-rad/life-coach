@@ -8,6 +8,7 @@ import UserNotifications
 struct LiveCoachApp: App {
     @State private var appState = AppState()
     private let fcmDelegate = FCMDelegate()
+    private let revenueCatDelegate = RevenueCatDelegate()
 
     init() {
         guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else { return }
@@ -25,6 +26,14 @@ struct LiveCoachApp: App {
         WindowGroup {
             RootView()
                 .environment(appState)
+                .onAppear {
+                    Purchases.shared.delegate = revenueCatDelegate
+                    revenueCatDelegate.onPremiumStatusChange = { [appState] isPremium in
+                        Task { @MainActor in
+                            appState.isPremium = isPremium
+                        }
+                    }
+                }
         }
     }
 }

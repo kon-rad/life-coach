@@ -3,6 +3,11 @@ import SwiftUI
 struct HowItWorksView: View {
     let onComplete: () -> Void
 
+    @Environment(AppState.self) private var appState
+    @State private var subscriptionService = SubscriptionService()
+    @State private var showPaywall = false
+    @State private var isFetchingOfferings = false
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
@@ -16,7 +21,7 @@ struct HowItWorksView: View {
                 stepCard(number: "3", title: "Evening check-in (5 min)", description: "Reflect, score, and set up tomorrow")
 
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Live Coach Premium")
+                    Text("Life Coach App Premium")
                         .font(.headline)
                         .bold()
                     Text("$19.99/month or $149.99/year")
@@ -35,16 +40,22 @@ struct HowItWorksView: View {
 
                 VStack(spacing: 12) {
                     Button {
-                        onComplete()
+                        Task { await startPremium() }
                     } label: {
-                        Text("Start Premium ($19.99/mo)")
-                            .font(.headline)
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color(.systemIndigo))
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                        HStack {
+                            if isFetchingOfferings {
+                                ProgressView().tint(.white)
+                            }
+                            Text("Start Premium ($19.99/mo)")
+                                .font(.headline)
+                                .foregroundStyle(.white)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color(.systemIndigo))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
+                    .disabled(isFetchingOfferings)
 
                     Button {
                         onComplete()
@@ -64,6 +75,17 @@ struct HowItWorksView: View {
             }
             .padding(.horizontal)
         }
+        .sheet(isPresented: $showPaywall, onDismiss: onComplete) {
+            SubscriptionPaywallView(subscriptionService: subscriptionService)
+                .environment(appState)
+        }
+    }
+
+    private func startPremium() async {
+        isFetchingOfferings = true
+        try? await subscriptionService.fetchOfferings()
+        isFetchingOfferings = false
+        showPaywall = true
     }
 
     private func stepCard(number: String, title: String, description: String) -> some View {
@@ -76,11 +98,8 @@ struct HowItWorksView: View {
                 .background(Color(.systemIndigo))
                 .clipShape(Circle())
             VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.headline)
-                Text(description)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                Text(title).font(.headline)
+                Text(description).font(.subheadline).foregroundStyle(.secondary)
             }
             Spacer()
         }

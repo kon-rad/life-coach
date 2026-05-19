@@ -1423,7 +1423,7 @@ proxy/
   - **Acceptance**: `xcodebuild -scheme LiveCoach -destination 'platform=iOS Simulator,name=iPhone 16' build 2>&1 | grep "BUILD SUCCEEDED"`. `cd proxy && npx tsc --noEmit && npm test` passes.
   - **Depends on**: T-023, T-033
 
-- [ ] **T-037 — RevenueCat paywall + purchase flow (full wiring)**
+- [x] **T-037 — RevenueCat paywall + purchase flow (full wiring)**
   - **Why**: Monetization must be end-to-end functional.
   - **Do**:
     In `SubscriptionService.fetchOfferings()`: call `Purchases.shared.offerings()` and extract `current.availablePackages`. In `ProfileView` "Upgrade plan" button: call `subscriptionService.fetchOfferings()` then present a `SubscriptionPaywallView` sheet.

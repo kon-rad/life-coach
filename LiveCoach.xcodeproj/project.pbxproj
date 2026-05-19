@@ -48,6 +48,7 @@
 		AB934E9867758CC4F2FCFEC7 /* CallsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D5FC912E7B4107347BDEDA0 /* CallsListView.swift */; };
 		AE98CAAE765D6F1EDC5B648A /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 2AE1CD37922BE4C9F88F1871 /* FirebaseMessaging */; };
 		B1F7ACC23767BAF422350B1B /* GoalInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 778D229820169B401E0B96A3 /* GoalInputView.swift */; };
+		BA2DABA361B67D0139721890 /* RevenueCatDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECD4A04CB13F6EA860264E6F /* RevenueCatDelegate.swift */; };
 		BA872ACF55E1B106FFA475BB /* HomeViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 884053719A5366792468A89D /* HomeViewModelTests.swift */; };
 		BCAC89F90E56B20F49D3512F /* SubscriptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A6CF7C87697225E009BE153 /* SubscriptionService.swift */; };
 		C04FAF24CE00B283191C1041 /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F09895923293B944363802DC /* SignInView.swift */; };
@@ -125,6 +126,7 @@
 		DC7FA69947E4F416B987B0E8 /* ProjectViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectViewModel.swift; sourceTree = "<group>"; };
 		E02E4DDB7AA77F92FC383AA0 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
 		E4F188F96C76C95151293A43 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
+		ECD4A04CB13F6EA860264E6F /* RevenueCatDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevenueCatDelegate.swift; sourceTree = "<group>"; };
 		EE71A4B5B8E4B35373E60D0F /* LiveCoachTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = LiveCoachTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F09895923293B944363802DC /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
 		F5338DB864EF10092AD2E824 /* MicroActionRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MicroActionRowView.swift; sourceTree = "<group>"; };
@@ -233,6 +235,7 @@
 				10C100E75A5F9A5DAB580319 /* FCMDelegate.swift */,
 				6FE56C101A54EB5CF556AE50 /* NotificationService.swift */,
 				C1E6C7EF1F4C01C820B69E5D /* ProjectService.swift */,
+				ECD4A04CB13F6EA860264E6F /* RevenueCatDelegate.swift */,
 				71D351B84C4C394E286B53DC /* SessionService.swift */,
 				2A6CF7C87697225E009BE153 /* SubscriptionService.swift */,
 				764299C688BA12DE45EDE81E /* VoiceCallService.swift */,
@@ -485,6 +488,7 @@
 				4CF17E0F6EC2A38076506F2B /* ProjectView.swift in Sources */,
 				E34BFE88CCC630378E762C4E /* ProjectViewModel.swift in Sources */,
 				03A648A4A07435B0711570CC /* ProxyAPIClient.swift in Sources */,
+				BA2DABA361B67D0139721890 /* RevenueCatDelegate.swift in Sources */,
 				3EF5B35CFFCAACC0B3C58DAB /* RootView.swift in Sources */,
 				77432E55FD72D371D7BA2AF6 /* SessionService.swift in Sources */,
 				C04FAF24CE00B283191C1041 /* SignInView.swift in Sources */,
