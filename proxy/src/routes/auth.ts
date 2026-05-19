@@ -1,19 +1,18 @@
 import { Router } from 'express';
 import { authMiddleware, AuthedRequest } from '../middleware/auth';
+import { generateAndStoreKey } from '../services/keyStore';
 
 const router = Router();
 
-async function stubGetUserKey(_userId: string): Promise<null> {
-  return null;
-}
-
 router.post('/init', authMiddleware, async (req, res) => {
   const { uid } = req as AuthedRequest;
-  const existingKey = await stubGetUserKey(uid);
-  if (!existingKey) {
-    console.log(`would generate key for user ${uid}`);
+  try {
+    await generateAndStoreKey(uid);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Failed to init user key:', err);
+    res.status(500).json({ error: 'Failed to initialize user' });
   }
-  res.json({ success: true });
 });
 
 export default router;
