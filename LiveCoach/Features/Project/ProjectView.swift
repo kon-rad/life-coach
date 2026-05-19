@@ -85,6 +85,18 @@ struct ProjectView: View {
                 Text(project.description)
                     .font(.body)
                     .foregroundStyle(.secondary)
+            } else {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                    Text("Generating description…")
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                }
+                Button("Refresh") {
+                    Task { await vm.load() }
+                }
+                .font(.subheadline)
             }
 
             Button("Edit project") { showEditSheet = true }

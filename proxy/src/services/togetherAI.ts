@@ -1,3 +1,27 @@
+export async function complete(prompt: string): Promise<string> {
+  const apiKey = process.env.TOGETHER_AI_API_KEY;
+  if (!apiKey) throw new Error('TOGETHER_AI_API_KEY is not set');
+
+  const response = await fetch('https://api.together.xyz/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 150,
+      temperature: 0.7,
+    }),
+  });
+
+  if (!response.ok) throw new Error(`Together AI request failed: ${response.status}`);
+
+  const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
+  return data.choices?.[0]?.message?.content?.trim() ?? '';
+}
+
 export interface TogetherMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;

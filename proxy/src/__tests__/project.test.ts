@@ -1,6 +1,11 @@
 import request from 'supertest';
 import { app } from '../index';
 
+jest.mock('../services/togetherAI', () => ({
+  complete: jest.fn().mockResolvedValue('A great description of the goal.'),
+  streamChat: jest.fn(),
+}));
+
 jest.mock('../services/firebase', () => ({
   adminAuth: {
     verifyIdToken: jest.fn().mockResolvedValue({ uid: 'user1' }),
@@ -111,5 +116,47 @@ describe('POST /project', () => {
       .send({ title: '   ' });
 
     expect(res.status).toBe(400);
+  });
+
+  it('responds immediately with 201 before description generation completes', async () => {
+    db.collection.mockReturnThis();
+    db.doc.mockReturnThis();
+    db.set.mockResolvedValue(undefined);
+
+    const { complete } = jest.requireMock('../services/togetherAI') as { complete: jest.Mock };
+    // Make complete slow to confirm response is not blocked
+    complete.mockImplementationOnce(
+      () => new Promise((resolve) => setTimeout(() => resolve('slow description'), 500)),
+    );
+
+    const start = Date.now();
+    const res = await request(app)
+      .post('/project')
+      .set('Authorization', 'Bearer valid-token')
+      .send({ title: 'Build a startup' });
+    const elapsed = Date.now() - start;
+
+    expect(res.status).toBe(201);
+    expect(elapsed).toBeLessThan(400);
+  });
+
+  it('triggers description generation via togetherAI.complete', async () => {
+    db.collection.mockReturnThis();
+    db.doc.mockReturnThis();
+    db.set.mockResolvedValue(undefined);
+    db.update.mockResolvedValue(undefined);
+
+    const { complete } = jest.requireMock('../services/togetherAI') as { complete: jest.Mock };
+    complete.mockClear();
+
+    await request(app)
+      .post('/project')
+      .set('Authorization', 'Bearer valid-token')
+      .send({ title: 'Learn Spanish' });
+
+    // Wait for setImmediate to fire
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(complete).toHaveBeenCalledWith(expect.stringContaining('Learn Spanish'));
   });
 });

@@ -2,49 +2,25 @@ import { Router, Response } from 'express';
 import { db } from '../services/firebase';
 import { encrypt, decrypt } from '../services/encryption';
 import { authMiddleware, AuthedRequest } from '../middleware/auth';
+import { complete } from '../services/togetherAI';
 
 const router = Router();
 router.use(authMiddleware);
 
 const projectDocId = (userId: string) => `${userId}_active`;
 
-async function generateProjectDescription(title: string, userId: string): Promise<void> {
-  const apiKey = process.env.TOGETHER_AI_API_KEY;
-  if (!apiKey) return;
-
-  try {
-    const response = await fetch('https://api.together.xyz/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
-        messages: [
-          {
-            role: 'user',
-            content: `In 2-3 sentences, describe what it means to work on this goal and what success looks like: ${title}`,
-          },
-        ],
-        max_tokens: 150,
-        temperature: 0.7,
-      }),
-    });
-
-    if (!response.ok) return;
-
-    const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
-    const description = data.choices?.[0]?.message?.content?.trim() ?? '';
-    if (!description) return;
-
-    const encryptedDescription = await encrypt(description, userId);
-    await db.collection('projects').doc(projectDocId(userId)).update({
-      description: encryptedDescription,
-    });
-  } catch {
-    // best-effort; caller is not awaiting
-  }
+function generateProjectDescription(title: string, userId: string): void {
+  setImmediate(async () => {
+    try {
+      const prompt = `In 2-3 sentences, describe what working on this goal means and what success looks like: "${title}". Be specific and motivating. Do not use generic language.`;
+      const description = await complete(prompt);
+      if (!description) return;
+      const encryptedDesc = await encrypt(description, userId);
+      await db.collection('projects').doc(projectDocId(userId)).update({ description: encryptedDesc });
+    } catch {
+      // best-effort
+    }
+  });
 }
 
 router.get('/', async (req, res: Response) => {

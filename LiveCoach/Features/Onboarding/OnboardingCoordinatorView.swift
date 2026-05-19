@@ -32,6 +32,21 @@ struct OnboardingCoordinatorView: View {
         }
         let body = ProjectBody(title: goalText, description: "")
         _ = try? await ProxyAPIClient.shared.post("/project", body: body) as Project
+
+        // Poll for AI-generated description (up to 10 s, 2 s intervals)
+        for _ in 0..<5 {
+            try? await Task.sleep(for: .seconds(2))
+            if let project = try? await ProxyAPIClient.shared.get("/project") as Project,
+               !project.description.isEmpty {
+                appState.currentProject = project
+                break
+            }
+        }
+        if appState.currentProject == nil,
+           let project = try? await ProxyAPIClient.shared.get("/project") as Project {
+            appState.currentProject = project
+        }
+
         let granted = await NotificationService.shared.requestPermission()
         if granted {
             NotificationService.shared.scheduleCheckInReminders(
