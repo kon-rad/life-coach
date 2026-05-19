@@ -1367,7 +1367,7 @@ proxy/
 
 ### Phase 9 — Polish & Integration
 
-- [ ] **T-034 — Free tier rate limiting**
+- [x] **T-034 — Free tier rate limiting**
   - **Why**: Free users are limited to 10 chat messages per day.
   - **Do**:
     In `proxy/src/routes/chat.ts` POST `/chat`: Before streaming, check if user is on free tier:
