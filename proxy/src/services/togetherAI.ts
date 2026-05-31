@@ -7,7 +7,7 @@ export interface CallAnalysis {
 
 export async function analyzeCall(
   transcript: string,
-  callType: 'midday' | 'evening' | 'free',
+  callType: 'midday' | 'evening' | 'weekly' | 'free',
   projectTitle: string,
 ): Promise<CallAnalysis> {
   const apiKey = process.env.TOGETHER_AI_API_KEY;

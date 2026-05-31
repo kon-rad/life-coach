@@ -127,10 +127,12 @@ router.post('/', async (req, res: Response) => {
   }
 
   try {
-    // Rate limit check for free tier users
+    // Rate limit check for free tier users.
+    // DEV_MODE bypasses the subscription/rate-limit gate entirely (dev only — do not enable in prod).
+    const devMode = process.env.DEV_MODE === 'true';
     const userDoc = await db.collection('users').doc(uid).get();
     const userData = userDoc.data() as { subscriptionStatus?: string } | undefined;
-    if (userData?.subscriptionStatus !== 'premium') {
+    if (!devMode && userData?.subscriptionStatus !== 'premium') {
       const today = formatDate(new Date());
       const convsSnapshot = await db.collection('conversations').where('userId', '==', uid).get();
       let todayUserMessageCount = 0;
