@@ -176,6 +176,31 @@ describe('PUT /user/profile', () => {
 
     expect(res.status).toBe(400);
   });
+
+  it('accepts and round-trips new notification settings fields', async () => {
+    const newSettings = {
+      middayReminderHour: 11,
+      middayReminderMinute: 30,
+      eveningReminderHour: 20,
+      eveningReminderMinute: 0,
+      weeklyPlanningWeekday: 0,
+      weeklyPlanningHour: 19,
+      weeklyPlanningMinute: 0,
+      timeZone: 'America/New_York',
+      streakReminders: true,
+    };
+    const res = await request(app)
+      .put('/user/profile')
+      .set('Authorization', `Bearer ${VALID_TOKEN}`)
+      .send({ notificationSettings: newSettings });
+
+    expect(res.status).toBe(200);
+    expect(db.set).toHaveBeenCalledTimes(1);
+    const setData = db.set.mock.calls[0][0] as { notificationSettings: string };
+    expect(setData.notificationSettings).toContain('middayReminderHour');
+    expect(setData.notificationSettings).toContain('weeklyPlanningWeekday');
+    expect(setData.notificationSettings).toContain('timeZone');
+  });
 });
 
 // ─── GET /user/stats — streak ─────────────────────────────────────────────────
