@@ -141,7 +141,7 @@ struct VoiceCallView: View {
             if showToast {
                 VStack {
                     Spacer()
-                    Text("Check-in saved! Your tasks will appear shortly.")
+                    Text(toastMessage)
                         .font(.system(size: 15))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 20)
@@ -217,6 +217,14 @@ struct VoiceCallView: View {
         .onDisappear {
             timerTask?.cancel()
             dismissTask?.cancel()
+        }
+    }
+
+    private var toastMessage: String {
+        switch callType {
+        case .midday, .evening: return "Check-in saved! Your tasks will appear shortly."
+        case .weekly: return "Weekly plan saved! Your tasks for next week are set."
+        case .free: return "Call saved."
         }
     }
 

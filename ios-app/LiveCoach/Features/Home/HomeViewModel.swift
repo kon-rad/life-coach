@@ -61,6 +61,7 @@ import Foundation
     var isEveningCallDone: Bool { todaySession?.eveningCallId != nil }
     var shouldShowMiddayCTA: Bool { !isMiddayCallDone && Calendar.current.component(.hour, from: Date()) < 14 }
     var shouldShowEveningCTA: Bool { !isEveningCallDone && Calendar.current.component(.hour, from: Date()) >= 14 }
+    var selectedCallType: CoachCallType { shouldShowMiddayCTA ? .midday : .evening }
     var displayScore: Double? { userStats?.averageScore }
     var todayScore: Int? { todaySession?.score }
 }

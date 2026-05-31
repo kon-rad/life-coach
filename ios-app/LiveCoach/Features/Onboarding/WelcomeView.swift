@@ -4,8 +4,8 @@ struct WelcomeView: View {
     let onNext: () -> Void
 
     private let bullets = [
-        "One goal. Daily progress.",
-        "Two short voice calls a day.",
+        "One goal. Weekly planning call.",
+        "Midday check-in & evening debrief.",
         "A score that means something.",
     ]
 

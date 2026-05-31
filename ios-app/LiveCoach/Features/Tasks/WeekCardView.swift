@@ -7,8 +7,6 @@ struct WeekCardView: View {
     let onToggleWeekTask: (WeekTask) -> Void
     let onToggleDayTask: (DailySession, DayTask) -> Void
 
-    private var weekKey: String { String(week.id.split(separator: "_").last ?? "") }
-
     var body: some View {
         LCCard {
             VStack(alignment: .leading, spacing: 14) {

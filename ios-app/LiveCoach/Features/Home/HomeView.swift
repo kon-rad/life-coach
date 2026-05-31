@@ -6,9 +6,8 @@ struct HomeView: View {
     @State private var viewModel: HomeViewModel?
     @State private var showVoiceCall = false
     @State private var voiceCallService = VoiceCallService()
-    @State private var selectedCallType: CoachCallType = .midday
 
-    private var isMorning: Bool { Calendar.current.component(.hour, from: Date()) < 17 }
+    private var isMorning: Bool { Calendar.current.component(.hour, from: Date()) < 12 }
     private var greeting: String { isMorning ? "Good morning." : "Good evening." }
     private var greetingSub: String { isMorning ? "Ready when you are." : "How did today go?" }
 
@@ -47,7 +46,7 @@ struct HomeView: View {
         .fullScreenCover(isPresented: $showVoiceCall) {
             if let vm = viewModel {
                 VoiceCallView(
-                    callType: vm.shouldShowMiddayCTA ? .midday : .evening,
+                    callType: vm.selectedCallType,
                     voiceCallService: voiceCallService
                 )
             }
@@ -163,7 +162,8 @@ struct HomeView: View {
     // MARK: - Call CTA
 
     private func callCTACard(vm: HomeViewModel) -> some View {
-        let callDone = isMorning ? vm.isMiddayCallDone : vm.isEveningCallDone
+        let isMidday = vm.selectedCallType == .midday
+        let callDone = isMidday ? vm.isMiddayCallDone : vm.isEveningCallDone
         let allDone = vm.isMiddayCallDone && vm.isEveningCallDone
 
         return LCCard(padding: 0) {
@@ -184,15 +184,15 @@ struct HomeView: View {
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text(callDone
-                             ? (allDone ? "Great work today!" : (isMorning ? "Midday check-in complete" : "Evening call complete"))
-                             : (isMorning ? "Start midday check-in" : "Start evening reflection"))
+                             ? (allDone ? "Great work today!" : (isMidday ? "Midday check-in complete" : "Evening call complete"))
+                             : (isMidday ? "Start midday check-in" : "Start evening reflection"))
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundStyle(Color.lcText)
                             .tracking(-0.3)
 
                         Text(callDone
-                             ? (allDone ? "See you tomorrow." : "See you \(isMorning ? "tonight" : "in the morning").")
-                             : (isMorning ? "5 minutes · plan the day" : "5 minutes · score the day"))
+                             ? (allDone ? "See you tomorrow." : "See you \(isMidday ? "tonight" : "in the morning").")
+                             : (isMidday ? "5 minutes · plan the day" : "5 minutes · score the day"))
                             .font(.system(size: 13.5))
                             .foregroundStyle(Color.lcTextDim)
                             .tracking(-0.1)
