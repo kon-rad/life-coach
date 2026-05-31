@@ -44,6 +44,25 @@ describe('handleToolCall', () => {
     expect(r).toMatch(/marked/i);
   });
 
+  it('complete_task toggles a matching week task and returns a week-task confirmation', async () => {
+    const weekTasks = [{ id: 'w1', title: 'Weekly goal', isCompleted: false, completedAt: null }];
+    // week doc exists and contains the matching task; db.collection().doc() returns db (mockReturnThis)
+    // so toggleInDoc will call db.update directly
+    db.get.mockResolvedValueOnce({
+      exists: true,
+      data: () => ({ tasks: `enc(${JSON.stringify(weekTasks)})` }),
+    });
+    const r = await handleToolCall('user1', 'complete_task', { taskId: 'w1', isCompleted: true });
+    expect(r).toMatch(/week task/i);
+    // db.update is called by toggleInDoc via weekRef (which is db itself due to mockReturnThis)
+    expect(db.update).toHaveBeenCalledTimes(1);
+    const updateArg = db.update.mock.calls[0][0] as { tasks: string };
+    expect(updateArg.tasks).toBeDefined();
+    // Verify the task was toggled to completed in the encrypted payload
+    const updated = JSON.parse(updateArg.tasks.replace(/^enc\(/, '').replace(/\)$/, '')) as Array<{ id: string; isCompleted: boolean }>;
+    expect(updated.find((t) => t.id === 'w1')?.isCompleted).toBe(true);
+  });
+
   it('returns an error string for an unknown tool', async () => {
     const r = await handleToolCall('user1', 'nope', {});
     expect(r).toMatch(/unknown/i);

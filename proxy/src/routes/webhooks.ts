@@ -110,44 +110,39 @@ router.post('/vapi', async (req: Request, res: Response) => {
     return;
   }
 
+  // analysis is computed at most once per call; reused for both session writes and conversation summary
+  let callAnalysis: { summary: string; score: number; scoreRationale: string } | null = null;
+
   try {
     if (callType === 'midday') {
       // Tasks were set live via tool calls — just persist conversation (handled below)
+      callAnalysis = await analyzeCall(transcript, 'midday', 'your goals');
     } else if (callType === 'evening') {
-      // Analyze the call for score
-      const analysis = await analyzeCall(transcript, callType, 'your goals');
+      // Analyze the call for score (single invocation — reused for summary below)
+      callAnalysis = await analyzeCall(transcript, 'evening', 'your goals');
 
       const today = todayDateString();
       const sessionId = `${userId}_${today}`;
       const sessionRef = db.collection('sessions').doc(sessionId);
       const sessionDoc = await sessionRef.get();
 
-      let existingTasks: Task[] = [];
-      if (sessionDoc.exists) {
-        const data = sessionDoc.data() as SessionDoc;
-        if (data.tasks) {
-          existingTasks = await decryptJSON<Task[]>(data.tasks);
-        }
-      }
-
-      const encryptedTasks = await encryptJSON(existingTasks);
-      const encryptedScoreRationale = await encrypt(analysis.scoreRationale);
+      const encryptedScoreRationale = await encrypt(callAnalysis.scoreRationale);
 
       if (sessionDoc.exists) {
         await sessionRef.update({
           eveningCallId: conversationId ?? null,
-          score: analysis.score,
+          score: callAnalysis.score,
           scoreRationale: encryptedScoreRationale,
         });
       } else {
         await sessionRef.set({
           userId,
           date: today,
-          tasks: encryptedTasks,
+          tasks: await encryptJSON([]),
           weekId: weekIdForDate(userId, today),
           middayCallId: null,
           eveningCallId: conversationId ?? null,
-          score: analysis.score,
+          score: callAnalysis.score,
           scoreRationale: encryptedScoreRationale,
         });
       }
@@ -210,19 +205,15 @@ router.post('/vapi', async (req: Request, res: Response) => {
       });
       if (weekSnap.exists) await weekRef.update({ retrospectiveId: retroId });
     } else {
-      // free call: just persist conversation (handled below)
+      // free call: analyze once for summary (used in conversation block below)
+      callAnalysis = await analyzeCall(transcript, 'free', 'your goals');
     }
 
-    // Analyze for summary (for non-weekly calls) and update conversation record
+    // Update conversation record with summary (non-weekly only)
     if (conversationId) {
       let summary = '';
-      if (callType !== 'weekly') {
-        try {
-          const analysis = await analyzeCall(transcript, callType === 'midday' ? 'midday' : callType === 'evening' ? 'evening' : 'free', 'your goals');
-          summary = analysis.summary;
-        } catch {
-          // non-fatal
-        }
+      if (callType !== 'weekly' && callAnalysis) {
+        summary = callAnalysis.summary;
       }
       const encryptedSummary = await encrypt(summary);
       const callMessages = buildMessagesFromCall(
