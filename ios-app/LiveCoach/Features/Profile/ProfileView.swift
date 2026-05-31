@@ -21,6 +21,7 @@ struct ProfileView: View {
             VStack(spacing: 16) {
                 subscriptionCard
                 aboutYouSection
+                retrospectivesSection
                 remindersSection
                 privacySection
                 accountSection
@@ -199,6 +200,19 @@ struct ProfileView: View {
         }
     }
 
+    // MARK: - Retrospectives
+
+    private var retrospectivesSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            LCSectionLabel(title: "Progress")
+            LCCard(padding: 0) {
+                NavigationLink { RetrospectiveListView() } label: {
+                    profileRowLabel(label: "Weekly Retrospective Reports")
+                }.buttonStyle(.plain)
+            }
+        }
+    }
+
     // MARK: - Reminders
 
     private var remindersSection: some View {
@@ -209,7 +223,7 @@ struct ProfileView: View {
                 NavigationLink {
                     NotificationSettingsView()
                 } label: {
-                    profileRowLabel(label: "Morning call reminder")
+                    profileRowLabel(label: "Midday check-in reminder")
                 }
                 .buttonStyle(.plain)
 
@@ -219,6 +233,15 @@ struct ProfileView: View {
                     NotificationSettingsView()
                 } label: {
                     profileRowLabel(label: "Evening reminder")
+                }
+                .buttonStyle(.plain)
+
+                Color.lcHairline.frame(height: 0.5)
+
+                NavigationLink {
+                    NotificationSettingsView()
+                } label: {
+                    profileRowLabel(label: "Weekly planning reminder")
                 }
                 .buttonStyle(.plain)
             }
