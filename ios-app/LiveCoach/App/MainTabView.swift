@@ -22,9 +22,9 @@ struct MainTabView: View {
                             .tag(0)
                             .tabItem { Label("Today", systemImage: "house") }
 
-                        ProjectView()
+                        TasksView()
                             .tag(1)
-                            .tabItem { Label("Project", systemImage: "target") }
+                            .tabItem { Label("Tasks", systemImage: "checklist") }
 
                         CallsView()
                             .tag(2)
@@ -69,9 +69,7 @@ struct MainTabView: View {
                 appState.setError(error)
                 return
             }
-            async let projectLoad: Project? = try? api.get("/project")
             async let statsLoad: UserStats? = try? api.get("/user/stats")
-            appState.currentProject = await projectLoad
             if let stats = await statsLoad {
                 appState.userStats = stats
             }
@@ -90,7 +88,7 @@ struct MainTabView: View {
     private var tabTitle: String {
         switch selectedTab {
         case 0: return "Today"
-        case 1: return "Project"
+        case 1: return "Tasks"
         case 2: return "Conversations"
         case 3: return "Settings"
         default: return ""

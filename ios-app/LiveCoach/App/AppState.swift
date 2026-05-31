@@ -3,7 +3,6 @@ import SwiftUI
 @MainActor
 @Observable final class AppState {
     var currentUser: User?
-    var currentProject: Project?
     var todaySession: DailySession?
     var userStats: UserStats?
     var isOnboardingComplete: Bool = false
@@ -17,7 +16,6 @@ import SwiftUI
 
     func clearAll() {
         currentUser = nil
-        currentProject = nil
         todaySession = nil
         userStats = nil
         isPremium = false
