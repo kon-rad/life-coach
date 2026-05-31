@@ -7,6 +7,7 @@ struct CallsView: View {
     @State private var selectedConversation: Conversation?
     @State private var showVoiceCall = false
     @State private var voiceCallService = VoiceCallService()
+    @State private var selectedCallType: CoachCallType = .free
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
@@ -44,9 +45,10 @@ struct CallsView: View {
                 chatService: chatService,
                 showSheet: $showNewConversation,
                 selectedConversation: $selectedConversation,
-                showVoiceCall: $showVoiceCall
+                showVoiceCall: $showVoiceCall,
+                selectedCallType: $selectedCallType
             )
-            .presentationDetents([.height(300)])
+            .presentationDetents([.height(380)])
             .presentationBackground(Color.lcSurface)
             .presentationCornerRadius(24)
         }
@@ -59,7 +61,7 @@ struct CallsView: View {
             }
         }
         .navigationDestination(isPresented: $showVoiceCall) {
-            VoiceCallView(callType: .freeVoice, voiceCallService: voiceCallService)
+            VoiceCallView(callType: selectedCallType, voiceCallService: voiceCallService)
         }
         .task {
             try? await chatService.loadConversations()
@@ -83,7 +85,7 @@ struct CallsView: View {
     }
 
     private func conversationRow(convo: Conversation, isLast: Bool) -> some View {
-        let isVoice = [ConversationType.morningCall, .eveningCall, .freeVoice].contains(convo.type)
+        let isVoice = [ConversationType.middayCall, .eveningCall, .weeklyCall, .freeVoice].contains(convo.type)
 
         return Button {
             selectedConversation = convo
@@ -175,9 +177,10 @@ struct CallsView: View {
 
 func callTypeLabel(_ type: ConversationType) -> String {
     switch type {
-    case .morningCall:  return "Voice call"
-    case .eveningCall:  return "Voice call"
-    case .freeChat:     return "Text chat"
-    case .freeVoice:    return "Voice call"
+    case .middayCall:  return "Midday check-in"
+    case .eveningCall: return "Evening debrief"
+    case .weeklyCall:  return "Weekly planning"
+    case .freeChat:    return "Text chat"
+    case .freeVoice:   return "Voice call"
     }
 }

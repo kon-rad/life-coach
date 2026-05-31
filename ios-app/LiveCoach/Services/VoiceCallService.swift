@@ -41,7 +41,7 @@ enum VoiceCallError: Error, Equatable {
         }
     }
 
-    func startCall(type: ConversationType, isPremium: Bool, voiceMinutesRemaining: Int) async throws {
+    func startCall(type: CoachCallType, isPremium: Bool, voiceMinutesRemaining: Int) async throws {
         if !isPremium { throw VoiceCallError.notAvailableOnFreeTier }
         if voiceMinutesRemaining <= 0 { throw VoiceCallError.quotaExceeded }
 
@@ -53,7 +53,7 @@ enum VoiceCallError: Error, Equatable {
         struct Body: Encodable { let callType: String }
         let resp: InitCallResponse = try await ProxyAPIClient.shared.post(
             "/vapi/init-call",
-            body: Body(callType: type.vapiCallType)
+            body: Body(callType: type.rawValue)
         )
 
         let vapi = Vapi(publicKey: Constants.vapiPublicKey)
@@ -147,15 +147,5 @@ enum VoiceCallError: Error, Equatable {
 
     private func cleanup() {
         vapi = nil
-    }
-}
-
-extension ConversationType {
-    var vapiCallType: String {
-        switch self {
-        case .morningCall: return "morning"
-        case .eveningCall: return "evening"
-        case .freeChat, .freeVoice: return "free"
-        }
     }
 }

@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct VoiceCallView: View {
-    let callType: ConversationType
+    let callType: CoachCallType
     var voiceCallService: VoiceCallService
 
     @Environment(\.dismiss) private var dismiss
@@ -15,9 +15,10 @@ struct VoiceCallView: View {
 
     private var callLabel: String {
         switch callType {
-        case .morningCall: return "MORNING CALL"
-        case .eveningCall: return "EVENING CALL"
-        case .freeChat, .freeVoice: return "VOICE CALL"
+        case .midday: return "MIDDAY CHECK-IN"
+        case .evening: return "EVENING DEBRIEF"
+        case .weekly: return "WEEKLY PLANNING"
+        case .free: return "VOICE CALL"
         }
     }
 
@@ -140,7 +141,7 @@ struct VoiceCallView: View {
             if showToast {
                 VStack {
                     Spacer()
-                    Text("Check-in saved! Your micro-actions will appear shortly.")
+                    Text("Check-in saved! Your tasks will appear shortly.")
                         .font(.system(size: 15))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 20)

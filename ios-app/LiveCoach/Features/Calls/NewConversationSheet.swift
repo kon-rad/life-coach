@@ -5,17 +5,21 @@ struct NewConversationSheet: View {
     @Binding var showSheet: Bool
     @Binding var selectedConversation: Conversation?
     @Binding var showVoiceCall: Bool
+    @Binding var selectedCallType: CoachCallType
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 16) {
-                ConversationTypeCard(
-                    icon: "mic.circle.fill",
-                    title: "Voice call",
-                    subtitle: "Talk with your AI coach • uses voice minutes"
-                ) {
-                    showSheet = false
-                    showVoiceCall = true
+            VStack(spacing: 12) {
+                ForEach(CoachCallType.allCases) { callType in
+                    ConversationTypeCard(
+                        icon: "mic.circle.fill",
+                        title: callType.label,
+                        subtitle: "Talk with your AI coach • uses voice minutes"
+                    ) {
+                        selectedCallType = callType
+                        showSheet = false
+                        showVoiceCall = true
+                    }
                 }
 
                 ConversationTypeCard(

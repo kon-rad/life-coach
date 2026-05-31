@@ -12,7 +12,20 @@ struct Message: Codable, Identifiable, Sendable {
 }
 
 enum ConversationType: String, Codable, Sendable {
-    case morningCall, eveningCall, freeChat, freeVoice
+    case middayCall, eveningCall, weeklyCall, freeChat, freeVoice
+}
+
+enum CoachCallType: String, CaseIterable, Identifiable, Sendable {
+    case midday, evening, weekly, free
+    var id: String { rawValue }
+    var label: String {
+        switch self {
+        case .midday: return "Midday check-in"
+        case .evening: return "Evening debrief"
+        case .weekly: return "Weekly planning"
+        case .free: return "Free call"
+        }
+    }
 }
 
 struct Conversation: Codable, Identifiable, Sendable {
