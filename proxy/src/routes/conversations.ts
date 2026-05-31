@@ -43,11 +43,22 @@ router.get('/', async (req, res: Response) => {
       snapshot.docs.map(async (doc) => {
         const data = doc.data() as ConversationDoc;
         const summary = data.summary ? await decrypt(data.summary) : '';
+        // Message bodies are omitted from the list payload (fetched on open),
+        // but we decrypt just to return an accurate count for the list UI.
+        let messageCount = 0;
+        if (data.messages) {
+          try {
+            messageCount = (await decryptJSON<Message[]>(data.messages)).length;
+          } catch {
+            // unreadable conversation -> count stays 0
+          }
+        }
         return {
           id: doc.id,
           userId: data.userId,
           type: data.type,
           messages: [],
+          messageCount,
           vapiCallId: data.vapiCallId ?? null,
           durationSeconds: data.durationSeconds ?? null,
           createdAt: data.createdAt,

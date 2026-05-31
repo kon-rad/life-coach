@@ -54,6 +54,9 @@ ralph.log
 *.key
 AuthKey_*.p8
 secrets/
+# Firebase Admin SDK service-account keys (never commit)
+*firebase-adminsdk*.json
+*service_account*.json
 
 # Xcode Package Resolved (keep this — locks dependency versions)
 # LiveCoach.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved

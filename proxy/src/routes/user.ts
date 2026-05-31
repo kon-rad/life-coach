@@ -9,15 +9,26 @@ router.use(authMiddleware);
 const WEEKLY_VOICE_QUOTA_SECONDS = 3600;
 
 interface NotificationSettings {
-  morningReminderHour: number;
-  morningReminderMinute: number;
+  middayReminderHour: number;
+  middayReminderMinute: number;
   eveningReminderHour: number;
   eveningReminderMinute: number;
+  weeklyPlanningWeekday: number;
+  weeklyPlanningHour: number;
+  weeklyPlanningMinute: number;
+  timeZone: string;
   streakReminders: boolean;
 }
 
+type CoachingStyle = 'tough' | 'balanced' | 'gentle';
+const COACHING_STYLES: readonly CoachingStyle[] = ['tough', 'balanced', 'gentle'];
+
 interface UserDoc {
   displayName?: string;
+  bio?: string;
+  coachingStyle?: string;
+  occupation?: string;
+  motivation?: string;
   createdAt?: string;
   voiceMinutesUsedThisWeek?: number;
   weeklyVoiceQuotaSeconds?: number;
@@ -74,19 +85,31 @@ router.get('/profile', async (req, res: Response) => {
 
     const data = doc.data() as UserDoc;
     const displayName = data.displayName ? await decrypt(data.displayName) : '';
+    const bio = data.bio ? await decrypt(data.bio) : '';
+    const coachingStyle = data.coachingStyle ? await decrypt(data.coachingStyle) : 'balanced';
+    const occupation = data.occupation ? await decrypt(data.occupation) : '';
+    const motivation = data.motivation ? await decrypt(data.motivation) : '';
     const notificationSettings: NotificationSettings = data.notificationSettings
       ? await decryptJSON<NotificationSettings>(data.notificationSettings)
       : {
-          morningReminderHour: 8,
-          morningReminderMinute: 0,
-          eveningReminderHour: 21,
+          middayReminderHour: 11,
+          middayReminderMinute: 30,
+          eveningReminderHour: 20,
           eveningReminderMinute: 0,
+          weeklyPlanningWeekday: 0,
+          weeklyPlanningHour: 19,
+          weeklyPlanningMinute: 0,
+          timeZone: 'UTC',
           streakReminders: true,
         };
 
     res.json({
       id: uid,
       displayName,
+      bio,
+      coachingStyle,
+      occupation,
+      motivation,
       createdAt: data.createdAt ?? new Date().toISOString(),
       voiceMinutesUsedThisWeek: data.voiceMinutesUsedThisWeek ?? 0,
       weeklyVoiceQuotaSeconds: data.weeklyVoiceQuotaSeconds ?? WEEKLY_VOICE_QUOTA_SECONDS,
@@ -94,24 +117,47 @@ router.get('/profile', async (req, res: Response) => {
       totalChatMessages: data.totalChatMessages ?? 0,
       notificationSettings,
     });
-  } catch {
+  } catch (err) {
+    console.error('[GET /user/profile] failed for uid', uid, err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
 router.put('/profile', async (req, res: Response) => {
   const uid = (req as AuthedRequest).uid;
-  const { displayName, notificationSettings, fcmToken } = req.body as {
-    displayName?: string;
-    notificationSettings?: NotificationSettings;
-    fcmToken?: string;
-  };
+  const { displayName, bio, coachingStyle, occupation, motivation, notificationSettings, fcmToken } =
+    req.body as {
+      displayName?: string;
+      bio?: string;
+      coachingStyle?: string;
+      occupation?: string;
+      motivation?: string;
+      notificationSettings?: NotificationSettings;
+      fcmToken?: string;
+    };
+
+  if (coachingStyle !== undefined && !COACHING_STYLES.includes(coachingStyle as CoachingStyle)) {
+    res.status(400).json({ error: 'coachingStyle must be "tough", "balanced", or "gentle"' });
+    return;
+  }
 
   try {
     const update: Record<string, unknown> = {};
 
     if (displayName !== undefined) {
       update.displayName = await encrypt(displayName);
+    }
+    if (bio !== undefined) {
+      update.bio = await encrypt(bio.slice(0, 300));
+    }
+    if (coachingStyle !== undefined) {
+      update.coachingStyle = await encrypt(coachingStyle);
+    }
+    if (occupation !== undefined) {
+      update.occupation = await encrypt(occupation.slice(0, 120));
+    }
+    if (motivation !== undefined) {
+      update.motivation = await encrypt(motivation.slice(0, 300));
     }
     if (notificationSettings !== undefined) {
       update.notificationSettings = await encryptJSON(notificationSettings);
@@ -197,7 +243,8 @@ router.get('/stats', async (req, res: Response) => {
       averageScore,
       voiceMinutesRemainingThisWeek,
     });
-  } catch {
+  } catch (err) {
+    console.error('[GET /user/stats] failed for uid', uid, err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

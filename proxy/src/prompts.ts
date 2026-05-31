@@ -1,0 +1,273 @@
+/**
+ * Single source of truth for every Soularc AI-coach prompt and the VAPI tool
+ * definitions. routes/vapi.ts and the weekly retrospective webhook import from
+ * here — do not define coach prompts inline anywhere else.
+ *
+ * Operating model (see docs/superpowers/specs/2026-05-31-weekly-daily-tasks-redesign-design.md):
+ *   - Weekly call  -> retro the ending week, set next week's 3 tasks (set_week_tasks)
+ *   - Midday call  -> progress + roadblocks, confirm today's 3 tasks (complete_task)
+ *   - Evening call -> debrief today, plan tomorrow's 3 tasks (set_day_tasks, complete_task)
+ *   - Free call    -> open conversation, no task writes
+ *
+ * Hierarchy: Week (3 tasks) -> Day (3 tasks). There is no overarching goal/project.
+ */
+
+export type CoachingStyle = 'tough' | 'balanced' | 'gentle';
+
+export interface UserProfile {
+  name: string;
+  bio: string;
+  coachingStyle: CoachingStyle;
+  occupation: string;
+  motivation: string;
+}
+
+/** A task as injected into the prompt so the agent can reference it by id. */
+export interface PromptTask {
+  id: string;
+  title: string;
+  isCompleted: boolean;
+}
+
+export interface CallPromptContext {
+  profile: UserProfile;
+  /** Current week's 3 tasks (with ids + done state). */
+  weekTasks: PromptTask[];
+  weekNumber: number;
+  weekStartDate: string;
+  weekEndDate: string;
+  /** Today's tasks (with ids), for midday/evening completion. */
+  todayTasks: PromptTask[];
+  /** Human-readable recent history (last 7 days completion + scores). */
+  recentHistory: string;
+}
+
+export interface RetrospectiveContext {
+  profile: UserProfile;
+  weekNumber: number;
+  weekStartDate: string;
+  weekEndDate: string;
+  /** Week tasks with final completion state. */
+  weekTasks: PromptTask[];
+  /** Per-day summary lines: tasks completed + score. */
+  dailyBreakdown: string;
+  /** Concatenated transcripts/summaries from the week's conversations. */
+  conversationDigest: string;
+}
+
+// ---------------------------------------------------------------------------
+// Shared helpers
+// ---------------------------------------------------------------------------
+
+export function styleGuidance(style: CoachingStyle): string {
+  switch (style) {
+    case 'tough':
+      return 'Coaching style: tough love. Be blunt and hold them accountable — no coddling, no empty praise.';
+    case 'gentle':
+      return 'Coaching style: gentle. Be warm, patient and encouraging; acknowledge effort before pushing.';
+    default:
+      return 'Coaching style: balanced — warm but direct.';
+  }
+}
+
+export function buildPersona(p: UserProfile): string {
+  const parts: string[] = [];
+  if (p.name) parts.push(`You are coaching ${p.name}.`);
+  if (p.occupation) parts.push(`They work as: ${p.occupation}.`);
+  if (p.bio) parts.push(`About them: ${p.bio}`);
+  if (p.motivation) parts.push(`Their deeper motivation: ${p.motivation}`);
+  parts.push(styleGuidance(p.coachingStyle));
+  return parts.join(' ');
+}
+
+function formatTasks(tasks: PromptTask[]): string {
+  if (tasks.length === 0) return '(none set yet)';
+  return tasks
+    .map(
+      (t, i) =>
+        `${i + 1}. [${t.isCompleted ? 'done' : 'not done'}] ${t.title} (id: ${t.id})`,
+    )
+    .join('\n');
+}
+
+const VOICE_RULES =
+  'Keep responses under 100 words. Ask one question at a time. Be direct — no filler ' +
+  'phrases like "Absolutely!" or "Great question!". Today\'s date and time are available ' +
+  'to you as {{now}} — use them to reason about dates.';
+
+// ---------------------------------------------------------------------------
+// Call prompts
+// ---------------------------------------------------------------------------
+
+/** Midday check-in: progress + roadblocks, confirm today's 3 tasks. */
+export function buildMiddayPrompt(ctx: CallPromptContext): string {
+  return (
+    `You are a warm, direct life coach running a midday check-in. ${buildPersona(ctx.profile)}\n\n` +
+    `This is week ${ctx.weekNumber} (${ctx.weekStartDate} → ${ctx.weekEndDate}).\n` +
+    `The 3 tasks for this week are:\n${formatTasks(ctx.weekTasks)}\n\n` +
+    `Today's 3 tasks are:\n${formatTasks(ctx.todayTasks)}\n\n` +
+    `Recent history (last 7 days):\n${ctx.recentHistory}\n\n` +
+    `Your job right now:\n` +
+    `1. Ask how the morning has gone and how they're feeling.\n` +
+    `2. Go through today's 3 tasks — what's done, what's in progress, any roadblocks or questions.\n` +
+    `3. If a task is complete or no longer complete, call the complete_task tool with its id and the correct isCompleted value.\n` +
+    `4. Help them unblock and recommit to finishing today's 3 tasks. Connect them to this week's tasks.\n\n` +
+    VOICE_RULES
+  );
+}
+
+/** Evening debrief: review today, plan tomorrow's 3 tasks. */
+export function buildEveningPrompt(ctx: CallPromptContext): string {
+  return (
+    `You are a warm, direct life coach running an evening debrief. ${buildPersona(ctx.profile)}\n\n` +
+    `This is week ${ctx.weekNumber} (${ctx.weekStartDate} → ${ctx.weekEndDate}).\n` +
+    `The 3 tasks for this week are:\n${formatTasks(ctx.weekTasks)}\n\n` +
+    `Today's 3 tasks are:\n${formatTasks(ctx.todayTasks)}\n\n` +
+    `Recent history (last 7 days):\n${ctx.recentHistory}\n\n` +
+    `Your job tonight:\n` +
+    `1. Ask how today went overall.\n` +
+    `2. Go through each of today's tasks — what got done, what didn't. For each, call complete_task with its id and the correct isCompleted value.\n` +
+    `3. Celebrate wins, acknowledge misses without judgment.\n` +
+    `4. Propose and agree on exactly 3 tasks for TOMORROW that move this week's tasks forward, then call set_day_tasks with tomorrow's date (YYYY-MM-DD) and the 3 task titles.\n` +
+    `5. Confirm tomorrow's 3 tasks aloud before ending.\n\n` +
+    VOICE_RULES
+  );
+}
+
+/** Weekly planning + retrospective: retro the ending week, set next week's 3 tasks. */
+export function buildWeeklyPrompt(ctx: CallPromptContext): string {
+  return (
+    `You are a warm, direct life coach running the weekly planning + retrospective meeting. ${buildPersona(ctx.profile)}\n\n` +
+    `The week that is ending is week ${ctx.weekNumber} (${ctx.weekStartDate} → ${ctx.weekEndDate}).\n` +
+    `Its 3 tasks were:\n${formatTasks(ctx.weekTasks)}\n\n` +
+    `This week's daily history:\n${ctx.recentHistory}\n\n` +
+    `Run the meeting in two parts:\n\n` +
+    `PART 1 — Retrospective of the ending week:\n` +
+    `1. Review the 3 weekly tasks: what got accomplished, what slipped. Mark final completion with complete_task where needed.\n` +
+    `2. Identify what went well, what to improve, and the ONE thing to do to be 1% better next week.\n\n` +
+    `PART 2 — Plan the next week:\n` +
+    `3. Based on the retro, agree on exactly 3 tasks for the UPCOMING week (the week that starts the next Monday).\n` +
+    `4. Call set_week_tasks with the 3 task titles.\n` +
+    `5. Confirm the 3 new weekly tasks aloud before ending.\n\n` +
+    `(A written retrospective report is generated automatically after this call — you do not need to dictate it.)\n\n` +
+    VOICE_RULES
+  );
+}
+
+/** Free / ad-hoc call: open conversation, no task writes. */
+export function buildFreePrompt(ctx: CallPromptContext): string {
+  return (
+    `You are a warm, direct, results-oriented life coach. ${buildPersona(ctx.profile)}\n\n` +
+    `This is week ${ctx.weekNumber} (${ctx.weekStartDate} → ${ctx.weekEndDate}).\n` +
+    `The 3 tasks for this week are:\n${formatTasks(ctx.weekTasks)}\n\n` +
+    `Today's 3 tasks are:\n${formatTasks(ctx.todayTasks)}\n\n` +
+    `Recent history (last 7 days):\n${ctx.recentHistory}\n\n` +
+    `This is an open conversation — follow the user's lead. Focus on action and accountability. ` +
+    `You may use complete_task if they report finishing or undoing a task, but do not set new week or day tasks here.\n\n` +
+    VOICE_RULES
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Retrospective report generation (Together AI, end-of-weekly-call webhook)
+// ---------------------------------------------------------------------------
+
+/**
+ * Builds the prompt that asks the model to generate the weekly retrospective
+ * report. The model MUST return strict JSON:
+ *   { "wentWell": string, "improve": string, "onePercent": string, "summary": string }
+ */
+export function buildRetrospectivePrompt(ctx: RetrospectiveContext): string {
+  return (
+    `You are generating a weekly retrospective report for ${ctx.profile.name || 'the user'}.\n` +
+    `Week ${ctx.weekNumber} (${ctx.weekStartDate} → ${ctx.weekEndDate}).\n\n` +
+    `The 3 weekly tasks and their final state:\n${formatTasks(ctx.weekTasks)}\n\n` +
+    `Daily breakdown (tasks completed + effort score per day):\n${ctx.dailyBreakdown}\n\n` +
+    `Highlights from this week's coaching conversations:\n${ctx.conversationDigest}\n\n` +
+    `Write a concise, honest, encouraging retrospective. Be specific — reference the actual ` +
+    `tasks and patterns above, not generic advice.\n\n` +
+    `Return ONLY a JSON object with these exact keys and no other text:\n` +
+    `{\n` +
+    `  "wentWell": "2-4 sentences on what went well and was accomplished",\n` +
+    `  "improve": "2-4 sentences on what to improve, based on what slipped",\n` +
+    `  "onePercent": "1 concrete, specific action to be 1% better next week",\n` +
+    `  "summary": "a short narrative report (4-8 sentences) tying it together"\n` +
+    `}`
+  );
+}
+
+// ---------------------------------------------------------------------------
+// VAPI tool definitions (register once via POST https://api.vapi.ai/tool,
+// attach to the assistant via toolIds). All point at /webhooks/vapi/tools.
+// ---------------------------------------------------------------------------
+
+export const TOOL_DEFINITIONS = [
+  {
+    type: 'function' as const,
+    function: {
+      name: 'set_week_tasks',
+      description:
+        "Set the 3 tasks for the user's UPCOMING week. Call this once during the weekly " +
+        'planning meeting after agreeing on the 3 tasks. Overwrites any existing tasks for that week.',
+      parameters: {
+        type: 'object',
+        properties: {
+          tasks: {
+            type: 'array',
+            description: 'Exactly 3 short task titles for the upcoming week.',
+            items: { type: 'string' },
+            minItems: 3,
+            maxItems: 3,
+          },
+        },
+        required: ['tasks'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'set_day_tasks',
+      description:
+        "Set the 3 tasks for a specific day. In the evening debrief, set TOMORROW's tasks. " +
+        'Overwrites any existing tasks for that date.',
+      parameters: {
+        type: 'object',
+        properties: {
+          date: {
+            type: 'string',
+            description: "Target date in YYYY-MM-DD format (use {{now}} to compute today/tomorrow).",
+          },
+          tasks: {
+            type: 'array',
+            description: 'Exactly 3 short task titles for that day.',
+            items: { type: 'string' },
+            minItems: 3,
+            maxItems: 3,
+          },
+        },
+        required: ['date', 'tasks'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'complete_task',
+      description:
+        'Mark a week task or day task as completed or not completed, by its id. ' +
+        'Use the ids provided in your system prompt.',
+      parameters: {
+        type: 'object',
+        properties: {
+          taskId: { type: 'string', description: 'The id of the week or day task.' },
+          isCompleted: {
+            type: 'boolean',
+            description: 'true to mark complete, false to mark not complete.',
+          },
+        },
+        required: ['taskId', 'isCompleted'],
+      },
+    },
+  },
+];

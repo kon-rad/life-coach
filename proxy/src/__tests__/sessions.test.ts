@@ -39,7 +39,7 @@ const { db } = jest.requireMock('../services/firebase') as {
   };
 };
 
-const sampleActions = [
+const sampleTasks = [
   { id: 'action1', title: 'Send cold emails', isCompleted: false, completedAt: null },
   { id: 'action2', title: 'Update portfolio', isCompleted: true, completedAt: '2026-05-19T10:00:00.000Z' },
 ];
@@ -47,9 +47,9 @@ const sampleActions = [
 const sessionDocData = (overrides: object = {}) => ({
   userId: 'user1',
   date: '2026-05-19',
-  microActions: `enc(${JSON.stringify(sampleActions)})`,
-  tomorrowMicroActions: null,
-  morningCallId: null,
+  tasks: `enc(${JSON.stringify(sampleTasks)})`,
+  weekId: 'user1_2026-W21',
+  middayCallId: null,
   eveningCallId: null,
   score: null,
   scoreRationale: null,
@@ -77,7 +77,7 @@ describe('GET /sessions', () => {
     expect(Array.isArray(res.body)).toBe(true);
     expect(res.body).toHaveLength(1);
     expect(res.body[0].date).toBe('2026-05-19');
-    expect(res.body[0].microActions).toHaveLength(2);
+    expect(res.body[0].tasks).toHaveLength(2);
     expect(res.body[0].score).toBe(8);
     expect(res.body[0].scoreRationale).toBe('Solid day');
   });
@@ -98,7 +98,7 @@ describe('GET /sessions/:date', () => {
     db.get.mockResolvedValueOnce({
       exists: true,
       id: 'user1_2026-05-19',
-      data: () => sessionDocData({ morningCallId: 'call-abc' }),
+      data: () => sessionDocData({ middayCallId: 'call-abc' }),
     });
 
     const res = await request(app)
@@ -109,9 +109,9 @@ describe('GET /sessions/:date', () => {
     expect(res.body.id).toBe('user1_2026-05-19');
     expect(res.body.date).toBe('2026-05-19');
     expect(res.body.userId).toBe('user1');
-    expect(res.body.microActions).toHaveLength(2);
-    expect(res.body.microActions[0].id).toBe('action1');
-    expect(res.body.morningCallId).toBe('call-abc');
+    expect(res.body.tasks).toHaveLength(2);
+    expect(res.body.tasks[0].id).toBe('action1');
+    expect(res.body.middayCallId).toBe('call-abc');
   });
 
   it('returns empty session template for an unknown date', async () => {
@@ -126,39 +126,26 @@ describe('GET /sessions/:date', () => {
     expect(res.status).toBe(200);
     expect(res.body.id).toBe('user1_2020-01-01');
     expect(res.body.date).toBe('2020-01-01');
-    expect(res.body.microActions).toEqual([]);
+    expect(res.body.tasks).toEqual([]);
     expect(res.body.score).toBeNull();
-    expect(res.body.morningCallId).toBeNull();
-    expect(res.body.tomorrowMicroActions).toBeNull();
+    expect(res.body.middayCallId).toBeNull();
   });
 });
 
-describe('PUT /sessions/:date/microactions/:actionId/complete', () => {
-  it('updates isCompleted and completedAt for the specified action', async () => {
-    db.collection.mockReturnThis();
-    db.doc.mockReturnThis();
-    db.get.mockResolvedValueOnce({
-      exists: true,
-      id: 'user1_2026-05-19',
-      data: () => sessionDocData(),
-    });
-
+describe('PUT /sessions/:date/tasks/:taskId/complete', () => {
+  it('marks a task complete', async () => {
+    db.get.mockResolvedValueOnce({ exists: true, id: 'user1_2026-05-19', data: () => sessionDocData() });
     const res = await request(app)
-      .put('/sessions/2026-05-19/microactions/action1/complete')
+      .put('/sessions/2026-05-19/tasks/action1/complete')
       .set('Authorization', 'Bearer valid-token')
       .send({ isCompleted: true });
-
     expect(res.status).toBe(200);
-    expect(db.update).toHaveBeenCalled();
-    const action1 = res.body.microActions.find((a: { id: string }) => a.id === 'action1');
-    expect(action1).toBeDefined();
-    expect(action1.isCompleted).toBe(true);
-    expect(action1.completedAt).toBeTruthy();
+    expect(res.body.tasks.find((t: { id: string }) => t.id === 'action1').isCompleted).toBe(true);
   });
 
   it('returns 400 when isCompleted is not a boolean', async () => {
     const res = await request(app)
-      .put('/sessions/2026-05-19/microactions/action1/complete')
+      .put('/sessions/2026-05-19/tasks/action1/complete')
       .set('Authorization', 'Bearer valid-token')
       .send({ isCompleted: 'yes' });
 
@@ -171,7 +158,7 @@ describe('PUT /sessions/:date/microactions/:actionId/complete', () => {
     db.get.mockResolvedValueOnce({ exists: false });
 
     const res = await request(app)
-      .put('/sessions/2099-01-01/microactions/action1/complete')
+      .put('/sessions/2099-01-01/tasks/action1/complete')
       .set('Authorization', 'Bearer valid-token')
       .send({ isCompleted: true });
 

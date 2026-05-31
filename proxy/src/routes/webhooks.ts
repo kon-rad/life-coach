@@ -1,7 +1,11 @@
 import { Router, Request, Response } from 'express';
-import * as crypto from 'crypto';
 import { db } from '../services/firebase';
 import { encrypt, encryptJSON, decryptJSON } from '../services/encryption';
+import { analyzeCall, generateRetrospective } from '../services/togetherAI';
+import { buildMessagesFromCall, VapiArtifactMessage } from '../services/vapiTranscript';
+import { handleToolCall } from '../services/vapiTools';
+import { weekId, weekRange, weekIdForDate } from '../services/weeks';
+import { buildRetrospectivePrompt } from '../prompts';
 
 const router = Router();
 
@@ -28,37 +32,46 @@ function tomorrowDateString(): string {
   return d.toISOString().split('T')[0];
 }
 
-interface RawMicroAction {
-  id?: string;
-  title: string;
-}
-
-interface MicroAction {
+interface Task {
   id: string;
   title: string;
   isCompleted: boolean;
   completedAt: string | null;
 }
 
-interface VapiMorningStructuredOutput {
-  microActions: RawMicroAction[];
-}
-
-interface VapiEveningStructuredOutput {
-  completedActionIds: string[];
-  score: number;
-  scoreRationale: string;
-  tomorrowMicroActions: RawMicroAction[];
-}
-
-interface VapiWebhookBody {
-  event: string;
-  callId: string;
+interface SessionDoc {
   userId: string;
-  callType: 'morning' | 'evening' | 'free';
-  transcript: string;
-  structuredOutput?: VapiMorningStructuredOutput | VapiEveningStructuredOutput;
-  durationSeconds?: number;
+  date: string;
+  tasks?: string;
+  weekId?: string | null;
+  middayCallId?: string | null;
+  eveningCallId?: string | null;
+  score?: number | null;
+  scoreRationale?: string | null;
+}
+
+// VAPI end-of-call-report webhook format
+interface VapiCallMetadata {
+  userId?: string;
+  callType?: string;
+  conversationId?: string;
+}
+
+interface VapiEndOfCallReport {
+  message: {
+    type: string;
+    call: {
+      id: string;
+      metadata?: VapiCallMetadata;
+    };
+    transcript?: string;
+    durationSeconds?: number;
+    messages?: VapiArtifactMessage[];
+    artifact?: {
+      messages?: VapiArtifactMessage[];
+      transcript?: string;
+    };
+  };
 }
 
 interface RevenueCatWebhookBody {
@@ -68,212 +81,152 @@ interface RevenueCatWebhookBody {
   };
 }
 
-interface SessionDoc {
-  userId: string;
-  date: string;
-  microActions?: string;
-  morningCallId?: string | null;
-  eveningCallId?: string | null;
-  score?: number | null;
-  scoreRationale?: string | null;
-  tomorrowMicroActions?: string | null;
-}
-
-interface UserDoc {
-  totalVoiceSecondsUsed?: number;
-  voiceMinutesUsedThisWeek?: number;
-}
-
-async function findConversationByVapiCallId(
-  userId: string,
-  vapiCallId: string,
-): Promise<string | null> {
-  const snapshot = await db
-    .collection('conversations')
-    .where('userId', '==', userId)
-    .where('vapiCallId', '==', vapiCallId)
-    .limit(1)
-    .get();
-  return snapshot.docs[0]?.id ?? null;
-}
-
 router.post('/vapi', async (req: Request, res: Response) => {
   if (!verifyVapiSecret(req)) {
     res.status(401).json({ error: 'Unauthorized' });
     return;
   }
 
-  const body = req.body as VapiWebhookBody;
-  const { callId, userId, callType, transcript, structuredOutput, durationSeconds } = body;
+  const body = req.body as VapiEndOfCallReport;
+  const message = body?.message;
 
-  if (!userId || !callType) {
-    res.status(400).json({ error: 'userId and callType are required' });
+  if (!message || message.type !== 'end-of-call-report') {
+    // Acknowledge other VAPI event types silently
+    res.json({ received: true });
     return;
   }
 
+  const metadata = message.call?.metadata ?? {};
+  const userId = metadata.userId;
+  const callType = metadata.callType as 'midday' | 'evening' | 'weekly' | 'free' | undefined;
+  const conversationId = metadata.conversationId;
+  const transcript = message.transcript ?? message.artifact?.transcript ?? '';
+  const durationSeconds = message.durationSeconds ?? null;
+  const artifactMessages = message.artifact?.messages ?? message.messages;
+
+  if (!userId || !callType) {
+    console.error('vapi webhook: missing userId or callType in metadata');
+    res.status(400).json({ error: 'Missing userId or callType in call metadata' });
+    return;
+  }
+
+  // analysis is computed at most once per call; reused for both session writes and conversation summary
+  let callAnalysis: { summary: string; score: number; scoreRationale: string } | null = null;
+
   try {
-    if (callType === 'morning') {
-      const output = structuredOutput as VapiMorningStructuredOutput | undefined;
-      const microActions: MicroAction[] = (output?.microActions ?? []).map((a) => ({
-        id: a.id ?? crypto.randomUUID(),
-        title: a.title,
-        isCompleted: false,
-        completedAt: null,
-      }));
-
-      const today = todayDateString();
-      const sessionId = `${userId}_${today}`;
-
-      const conversationId = await findConversationByVapiCallId(userId, callId);
-
-      const sessionRef = db.collection('sessions').doc(sessionId);
-      const sessionDoc = await sessionRef.get();
-      const encryptedMicroActions = await encryptJSON(microActions);
-
-      if (sessionDoc.exists) {
-        await sessionRef.update({
-          microActions: encryptedMicroActions,
-          morningCallId: conversationId,
-        });
-      } else {
-        await sessionRef.set({
-          userId,
-          date: today,
-          microActions: encryptedMicroActions,
-          morningCallId: conversationId,
-          eveningCallId: null,
-          score: null,
-          scoreRationale: null,
-          tomorrowMicroActions: null,
-        });
-      }
-
-      if (conversationId) {
-        const encryptedMessages = await encryptJSON(
-          [
-            {
-              id: crypto.randomUUID(),
-              role: 'assistant',
-              content: transcript || '',
-              timestamp: new Date().toISOString(),
-            },
-          ],
-        );
-        await db.collection('conversations').doc(conversationId).update({
-          messages: encryptedMessages,
-          durationSeconds: durationSeconds ?? null,
-        });
-      }
+    if (callType === 'midday') {
+      // Tasks were set live via tool calls — just persist conversation (handled below)
+      callAnalysis = await analyzeCall(transcript, 'midday', 'your goals');
     } else if (callType === 'evening') {
-      const output = structuredOutput as VapiEveningStructuredOutput | undefined;
-      const completedActionIds: string[] = output?.completedActionIds ?? [];
-      const score: number | null = output?.score ?? null;
-      const scoreRationale: string = output?.scoreRationale ?? '';
-      const tomorrowRaw: RawMicroAction[] = output?.tomorrowMicroActions ?? [];
-
-      const tomorrowMicroActions: MicroAction[] = tomorrowRaw.map((a) => ({
-        id: a.id ?? crypto.randomUUID(),
-        title: a.title,
-        isCompleted: false,
-        completedAt: null,
-      }));
+      // Analyze the call for score (single invocation — reused for summary below)
+      callAnalysis = await analyzeCall(transcript, 'evening', 'your goals');
 
       const today = todayDateString();
-      const tomorrow = tomorrowDateString();
       const sessionId = `${userId}_${today}`;
-
       const sessionRef = db.collection('sessions').doc(sessionId);
       const sessionDoc = await sessionRef.get();
 
-      let existingMicroActions: MicroAction[] = [];
-      if (sessionDoc.exists) {
-        const data = sessionDoc.data() as SessionDoc;
-        if (data.microActions) {
-          existingMicroActions = await decryptJSON<MicroAction[]>(data.microActions);
-        }
-      }
-
-      const now = new Date().toISOString();
-      const updatedMicroActions = existingMicroActions.map((a) => ({
-        ...a,
-        isCompleted: completedActionIds.includes(a.id) ? true : a.isCompleted,
-        completedAt:
-          completedActionIds.includes(a.id) && !a.isCompleted ? now : a.completedAt,
-      }));
-
-      const conversationId = await findConversationByVapiCallId(userId, callId);
-      const encryptedMicroActions = await encryptJSON(updatedMicroActions);
-      const encryptedScoreRationale = await encrypt(scoreRationale);
-      const encryptedTomorrowActions = await encryptJSON(tomorrowMicroActions);
+      const encryptedScoreRationale = await encrypt(callAnalysis.scoreRationale);
 
       if (sessionDoc.exists) {
         await sessionRef.update({
-          microActions: encryptedMicroActions,
-          score,
+          eveningCallId: conversationId ?? null,
+          score: callAnalysis.score,
           scoreRationale: encryptedScoreRationale,
-          eveningCallId: conversationId,
         });
       } else {
         await sessionRef.set({
           userId,
           date: today,
-          microActions: encryptedMicroActions,
-          morningCallId: null,
-          eveningCallId: conversationId,
-          score,
+          tasks: await encryptJSON([]),
+          weekId: weekIdForDate(userId, today),
+          middayCallId: null,
+          eveningCallId: conversationId ?? null,
+          score: callAnalysis.score,
           scoreRationale: encryptedScoreRationale,
-          tomorrowMicroActions: null,
         });
       }
 
-      const tomorrowSessionId = `${userId}_${tomorrow}`;
-      const tomorrowRef = db.collection('sessions').doc(tomorrowSessionId);
+      // Set up tomorrow's session skeleton if not existing
+      const tomorrow = tomorrowDateString();
+      const tomorrowRef = db.collection('sessions').doc(`${userId}_${tomorrow}`);
       const tomorrowDoc = await tomorrowRef.get();
-
-      if (tomorrowDoc.exists) {
-        await tomorrowRef.update({ tomorrowMicroActions: encryptedTomorrowActions });
-      } else {
+      if (!tomorrowDoc.exists) {
         await tomorrowRef.set({
           userId,
           date: tomorrow,
-          microActions: await encryptJSON([]),
-          morningCallId: null,
+          tasks: await encryptJSON([]),
+          weekId: weekIdForDate(userId, tomorrow),
+          middayCallId: null,
           eveningCallId: null,
           score: null,
           scoreRationale: null,
-          tomorrowMicroActions: encryptedTomorrowActions,
         });
       }
 
+      // Update voice usage
       const userRef = db.collection('users').doc(userId);
       const userDoc = await userRef.get();
       if (userDoc.exists) {
-        const userData = userDoc.data() as UserDoc;
-        const prevTotal = userData.totalVoiceSecondsUsed ?? 0;
-        const prevWeek = userData.voiceMinutesUsedThisWeek ?? 0;
-        const seconds = durationSeconds ?? 0;
+        const userData = userDoc.data() as { totalVoiceSecondsUsed?: number; voiceMinutesUsedThisWeek?: number };
         await userRef.update({
-          totalVoiceSecondsUsed: prevTotal + seconds,
-          voiceMinutesUsedThisWeek: prevWeek + seconds,
+          totalVoiceSecondsUsed: (userData.totalVoiceSecondsUsed ?? 0) + (durationSeconds ?? 0),
+          voiceMinutesUsedThisWeek: (userData.voiceMinutesUsedThisWeek ?? 0) + (durationSeconds ?? 0),
         });
+      }
+    } else if (callType === 'weekly') {
+      const range = weekRange(new Date());
+      const weekDocId = weekId(userId, new Date());
+      const weekRef = db.collection('weeks').doc(weekDocId);
+      const weekSnap = await weekRef.get();
+
+      let weekTasks: Array<{ id: string; title: string; isCompleted: boolean }> = [];
+      if (weekSnap.exists) {
+        const wd = weekSnap.data() as { tasks?: string };
+        if (wd.tasks) weekTasks = await decryptJSON(wd.tasks);
+        await weekRef.update({ status: 'complete' });
       }
 
-      if (conversationId) {
-        const encryptedMessages = await encryptJSON(
-          [
-            {
-              id: crypto.randomUUID(),
-              role: 'assistant',
-              content: transcript || '',
-              timestamp: new Date().toISOString(),
-            },
-          ],
-        );
-        await db.collection('conversations').doc(conversationId).update({
-          messages: encryptedMessages,
-          durationSeconds: durationSeconds ?? null,
-        });
+      const profile = { name: '', bio: '', coachingStyle: 'balanced' as const, occupation: '', motivation: '' };
+      const prompt = buildRetrospectivePrompt({
+        profile, weekNumber: range.week, weekStartDate: range.startDate, weekEndDate: range.endDate,
+        weekTasks: weekTasks.map((t) => ({ id: t.id, title: t.title, isCompleted: t.isCompleted })),
+        dailyBreakdown: 'See conversations.', conversationDigest: transcript,
+      });
+      const report = await generateRetrospective(prompt);
+
+      const retroId = `${userId}_${range.year}-W${String(range.week).padStart(2, '0')}`;
+      await db.collection('retrospectives').doc(retroId).set({
+        userId, weekId: weekDocId, weekNumber: range.week, year: range.year,
+        startDate: range.startDate, endDate: range.endDate,
+        wentWell: await encrypt(report.wentWell), improve: await encrypt(report.improve),
+        onePercent: await encrypt(report.onePercent), summary: await encrypt(report.summary),
+        createdAt: new Date().toISOString(),
+      });
+      if (weekSnap.exists) await weekRef.update({ retrospectiveId: retroId });
+    } else {
+      // free call: analyze once for summary (used in conversation block below)
+      callAnalysis = await analyzeCall(transcript, 'free', 'your goals');
+    }
+
+    // Update conversation record with summary (non-weekly only)
+    if (conversationId) {
+      let summary = '';
+      if (callType !== 'weekly' && callAnalysis) {
+        summary = callAnalysis.summary;
       }
+      const encryptedSummary = await encrypt(summary);
+      const callMessages = buildMessagesFromCall(
+        artifactMessages,
+        transcript,
+        new Date().toISOString(),
+      );
+      const encryptedMessages = await encryptJSON(callMessages);
+      await db.collection('conversations').doc(conversationId).update({
+        messages: encryptedMessages,
+        summary: encryptedSummary,
+        durationSeconds,
+      });
     }
 
     res.json({ received: true });
@@ -281,6 +234,35 @@ router.post('/vapi', async (req: Request, res: Response) => {
     console.error('vapi webhook error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
+});
+
+interface VapiToolCallsBody {
+  message: {
+    type: string;
+    toolCallList?: Array<{ id: string; name?: string; function?: { name: string; arguments: unknown }; arguments?: unknown }>;
+    call?: { metadata?: { userId?: string } };
+  };
+}
+
+router.post('/vapi/tools', async (req: Request, res: Response) => {
+  if (!verifyVapiSecret(req)) { res.status(401).json({ error: 'Unauthorized' }); return; }
+  const body = req.body as VapiToolCallsBody;
+  const message = body?.message;
+  if (!message || message.type !== 'tool-calls') { res.json({ received: true }); return; }
+  const uid = message.call?.metadata?.userId;
+  if (!uid) { res.status(400).json({ error: 'Missing userId in call metadata' }); return; }
+
+  const calls = message.toolCallList ?? [];
+  const results = await Promise.all(calls.map(async (c) => {
+    const name = c.function?.name ?? c.name ?? '';
+    const rawArgs = c.function?.arguments ?? c.arguments ?? {};
+    const args = typeof rawArgs === 'string' ? JSON.parse(rawArgs) : rawArgs;
+    let result: string;
+    try { result = await handleToolCall(uid, name, args as Record<string, unknown>); }
+    catch (e) { console.error('tool call error', e); result = 'There was an error saving that.'; }
+    return { toolCallId: c.id, result };
+  }));
+  res.json({ results });
 });
 
 const PREMIUM_EVENTS = new Set(['INITIAL_PURCHASE', 'RENEWAL', 'UNCANCELLATION']);
