@@ -1,10 +1,11 @@
 import { Router, Request, Response } from 'express';
-import * as crypto from 'crypto';
 import { db } from '../services/firebase';
-import { encrypt, encryptJSON, decrypt, decryptJSON } from '../services/encryption';
-import { analyzeCall } from '../services/togetherAI';
+import { encrypt, encryptJSON, decryptJSON } from '../services/encryption';
+import { analyzeCall, generateRetrospective } from '../services/togetherAI';
 import { buildMessagesFromCall, VapiArtifactMessage } from '../services/vapiTranscript';
 import { handleToolCall } from '../services/vapiTools';
+import { weekId, weekRange, weekIdForDate } from '../services/weeks';
+import { buildRetrospectivePrompt } from '../prompts';
 
 const router = Router();
 
@@ -31,7 +32,7 @@ function tomorrowDateString(): string {
   return d.toISOString().split('T')[0];
 }
 
-interface MicroAction {
+interface Task {
   id: string;
   title: string;
   isCompleted: boolean;
@@ -41,15 +42,12 @@ interface MicroAction {
 interface SessionDoc {
   userId: string;
   date: string;
-  microActions?: string;
-  morningCallId?: string | null;
+  tasks?: string;
+  weekId?: string | null;
+  middayCallId?: string | null;
   eveningCallId?: string | null;
   score?: number | null;
   scoreRationale?: string | null;
-}
-
-interface ProjectDoc {
-  title: string;
 }
 
 // VAPI end-of-call-report webhook format
@@ -113,67 +111,26 @@ router.post('/vapi', async (req: Request, res: Response) => {
   }
 
   try {
-    // Fetch project title for context in LLM analysis
-    let projectTitle = 'Unknown project';
-    try {
-      const projectDoc = await db.collection('projects').doc(`${userId}_active`).get();
-      if (projectDoc.exists) {
-        const projectData = projectDoc.data() as ProjectDoc;
-        projectTitle = await decrypt(projectData.title);
-      }
-    } catch {
-      // Non-fatal — analysis will still run without full context
-    }
-
-    // Analyze the transcript with Together AI
-    const analysis = await analyzeCall(transcript, callType, projectTitle);
-
-    const today = todayDateString();
-    const sessionId = `${userId}_${today}`;
-    const sessionRef = db.collection('sessions').doc(sessionId);
-    const sessionDoc = await sessionRef.get();
-
     if (callType === 'midday') {
-      const microActions: MicroAction[] = (analysis.microActions ?? []).map((a) => ({
-        id: a.id || crypto.randomUUID(),
-        title: a.title,
-        isCompleted: false,
-        completedAt: null,
-      }));
-
-      const encryptedMicroActions = await encryptJSON(microActions);
-      const encryptedScoreRationale = await encrypt(analysis.scoreRationale);
-
-      if (sessionDoc.exists) {
-        await sessionRef.update({
-          microActions: encryptedMicroActions,
-          morningCallId: conversationId ?? null,
-          score: analysis.score,
-          scoreRationale: encryptedScoreRationale,
-        });
-      } else {
-        await sessionRef.set({
-          userId,
-          date: today,
-          microActions: encryptedMicroActions,
-          morningCallId: conversationId ?? null,
-          eveningCallId: null,
-          score: analysis.score,
-          scoreRationale: encryptedScoreRationale,
-          tomorrowMicroActions: null,
-        });
-      }
+      // Tasks were set live via tool calls — just persist conversation (handled below)
     } else if (callType === 'evening') {
-      // For evening calls: update today's session with score
-      let existingMicroActions: MicroAction[] = [];
+      // Analyze the call for score
+      const analysis = await analyzeCall(transcript, callType, 'your goals');
+
+      const today = todayDateString();
+      const sessionId = `${userId}_${today}`;
+      const sessionRef = db.collection('sessions').doc(sessionId);
+      const sessionDoc = await sessionRef.get();
+
+      let existingTasks: Task[] = [];
       if (sessionDoc.exists) {
         const data = sessionDoc.data() as SessionDoc;
-        if (data.microActions) {
-          existingMicroActions = await decryptJSON<MicroAction[]>(data.microActions);
+        if (data.tasks) {
+          existingTasks = await decryptJSON<Task[]>(data.tasks);
         }
       }
 
-      const encryptedMicroActions = await encryptJSON(existingMicroActions);
+      const encryptedTasks = await encryptJSON(existingTasks);
       const encryptedScoreRationale = await encrypt(analysis.scoreRationale);
 
       if (sessionDoc.exists) {
@@ -186,16 +143,16 @@ router.post('/vapi', async (req: Request, res: Response) => {
         await sessionRef.set({
           userId,
           date: today,
-          microActions: encryptedMicroActions,
-          morningCallId: null,
+          tasks: encryptedTasks,
+          weekId: weekIdForDate(userId, today),
+          middayCallId: null,
           eveningCallId: conversationId ?? null,
           score: analysis.score,
           scoreRationale: encryptedScoreRationale,
-          tomorrowMicroActions: null,
         });
       }
 
-      // Also set up tomorrow's session skeleton
+      // Set up tomorrow's session skeleton if not existing
       const tomorrow = tomorrowDateString();
       const tomorrowRef = db.collection('sessions').doc(`${userId}_${tomorrow}`);
       const tomorrowDoc = await tomorrowRef.get();
@@ -203,12 +160,12 @@ router.post('/vapi', async (req: Request, res: Response) => {
         await tomorrowRef.set({
           userId,
           date: tomorrow,
-          microActions: await encryptJSON([]),
-          morningCallId: null,
+          tasks: await encryptJSON([]),
+          weekId: weekIdForDate(userId, tomorrow),
+          middayCallId: null,
           eveningCallId: null,
           score: null,
           scoreRationale: null,
-          tomorrowMicroActions: null,
         });
       }
 
@@ -222,13 +179,52 @@ router.post('/vapi', async (req: Request, res: Response) => {
           voiceMinutesUsedThisWeek: (userData.voiceMinutesUsedThisWeek ?? 0) + (durationSeconds ?? 0),
         });
       }
+    } else if (callType === 'weekly') {
+      const range = weekRange(new Date());
+      const weekDocId = weekId(userId, new Date());
+      const weekRef = db.collection('weeks').doc(weekDocId);
+      const weekSnap = await weekRef.get();
+
+      let weekTasks: Array<{ id: string; title: string; isCompleted: boolean }> = [];
+      if (weekSnap.exists) {
+        const wd = weekSnap.data() as { tasks?: string };
+        if (wd.tasks) weekTasks = await decryptJSON(wd.tasks);
+        await weekRef.update({ status: 'complete' });
+      }
+
+      const profile = { name: '', bio: '', coachingStyle: 'balanced' as const, occupation: '', motivation: '' };
+      const prompt = buildRetrospectivePrompt({
+        profile, weekNumber: range.week, weekStartDate: range.startDate, weekEndDate: range.endDate,
+        weekTasks: weekTasks.map((t) => ({ id: t.id, title: t.title, isCompleted: t.isCompleted })),
+        dailyBreakdown: 'See conversations.', conversationDigest: transcript,
+      });
+      const report = await generateRetrospective(prompt);
+
+      const retroId = `${userId}_${range.year}-W${String(range.week).padStart(2, '0')}`;
+      await db.collection('retrospectives').doc(retroId).set({
+        userId, weekId: weekDocId, weekNumber: range.week, year: range.year,
+        startDate: range.startDate, endDate: range.endDate,
+        wentWell: await encrypt(report.wentWell), improve: await encrypt(report.improve),
+        onePercent: await encrypt(report.onePercent), summary: await encrypt(report.summary),
+        createdAt: new Date().toISOString(),
+      });
+      if (weekSnap.exists) await weekRef.update({ retrospectiveId: retroId });
     } else {
-      // free call: just save score + summary, no session impact
+      // free call: just persist conversation (handled below)
     }
 
-    // Update the conversation record with the summary and duration
+    // Analyze for summary (for non-weekly calls) and update conversation record
     if (conversationId) {
-      const encryptedSummary = await encrypt(analysis.summary);
+      let summary = '';
+      if (callType !== 'weekly') {
+        try {
+          const analysis = await analyzeCall(transcript, callType === 'midday' ? 'midday' : callType === 'evening' ? 'evening' : 'free', 'your goals');
+          summary = analysis.summary;
+        } catch {
+          // non-fatal
+        }
+      }
+      const encryptedSummary = await encrypt(summary);
       const callMessages = buildMessagesFromCall(
         artifactMessages,
         transcript,

@@ -1,7 +1,7 @@
 import request from 'supertest';
 import { app } from '../index';
 
-const VAPI_SECRET = 'test-vapi-secret';
+const VAPI_SECRET = 'test-secret';
 const RC_SECRET = 'test-rc-secret';
 
 beforeAll(() => {
@@ -40,6 +40,20 @@ jest.mock('../services/encryption', () => ({
   ),
 }));
 
+jest.mock('../services/togetherAI', () => ({
+  analyzeCall: jest.fn().mockResolvedValue({
+    summary: 'Good call', score: 7, scoreRationale: 'Solid effort.',
+  }),
+  generateRetrospective: jest.fn().mockResolvedValue({
+    wentWell: 'Shipped API', improve: 'Start earlier',
+    onePercent: 'Plan the night before', summary: 'Solid week',
+  }),
+}));
+
+jest.mock('../prompts', () => ({
+  buildRetrospectivePrompt: jest.fn().mockReturnValue('retro prompt'),
+}));
+
 const { db } = jest.requireMock('../services/firebase') as {
   db: {
     collection: jest.Mock;
@@ -53,20 +67,23 @@ const { db } = jest.requireMock('../services/firebase') as {
   };
 };
 
-const existingActions = [
-  { id: 'a1', title: 'Write landing page', isCompleted: false, completedAt: null },
-  { id: 'a2', title: 'Set up Stripe', isCompleted: false, completedAt: null },
-  { id: 'a3', title: 'Email users', isCompleted: false, completedAt: null },
-];
+const { analyzeCall: mockAnalyzeCall, generateRetrospective: mockGenerateRetrospective } =
+  jest.requireMock('../services/togetherAI') as {
+    analyzeCall: jest.Mock;
+    generateRetrospective: jest.Mock;
+  };
 
-const convSnapshot = (conversationId: string) => ({
-  docs: [{ id: conversationId }],
-});
+const { adminAuth } = jest.requireMock('../services/firebase') as {
+  adminAuth: { verifyIdToken: jest.Mock };
+};
 
-const emptyConvSnapshot = { docs: [] };
+const enc = jest.requireMock('../services/encryption') as {
+  encrypt: jest.Mock; decrypt: jest.Mock; encryptJSON: jest.Mock; decryptJSON: jest.Mock;
+};
 
 beforeEach(() => {
-  jest.clearAllMocks();
+  jest.resetAllMocks();
+  adminAuth.verifyIdToken.mockResolvedValue({ uid: 'user1' });
   db.collection.mockReturnThis();
   db.doc.mockReturnThis();
   db.where.mockReturnThis();
@@ -74,237 +91,162 @@ beforeEach(() => {
   db.limit.mockReturnThis();
   db.set.mockResolvedValue(undefined);
   db.update.mockResolvedValue(undefined);
+  enc.encrypt.mockImplementation((p: string) => Promise.resolve(`enc(${p})`));
+  enc.decrypt.mockImplementation((c: string) => Promise.resolve(c.replace(/^enc\(/, '').replace(/\)$/, '')));
+  enc.encryptJSON.mockImplementation((o: unknown) => Promise.resolve(`enc(${JSON.stringify(o)})`));
+  enc.decryptJSON.mockImplementation((c: string) => Promise.resolve(JSON.parse(c.replace(/^enc\(/, '').replace(/\)$/, ''))));
+  mockAnalyzeCall.mockResolvedValue({ summary: 'Good call', score: 7, scoreRationale: 'Solid effort.' });
+  mockGenerateRetrospective.mockResolvedValue({
+    wentWell: 'Shipped API', improve: 'Start earlier',
+    onePercent: 'Plan the night before', summary: 'Solid week',
+  });
 });
 
-// ─── VAPI webhooks ────────────────────────────────────────────────────────────
+function makeVapiBody(callType: string, overrides: object = {}) {
+  return {
+    message: {
+      type: 'end-of-call-report',
+      call: { id: 'c1', metadata: { userId: 'user1', callType, conversationId: 'conv1' } },
+      transcript: 'hello world',
+      durationSeconds: 300,
+      ...overrides,
+    },
+  };
+}
+
+// ─── VAPI webhooks — security ─────────────────────────────────────────────────
 
 describe('POST /webhooks/vapi — security', () => {
   it('returns 401 for invalid VAPI secret', async () => {
     const res = await request(app)
       .post('/webhooks/vapi')
       .set('x-vapi-secret', 'wrong-secret')
-      .send({ callId: 'c1', userId: 'user1', callType: 'morning', transcript: '', durationSeconds: 60 });
-
+      .send(makeVapiBody('midday'));
     expect(res.status).toBe(401);
   });
 
   it('returns 401 when VAPI secret header is missing', async () => {
     const res = await request(app)
       .post('/webhooks/vapi')
-      .send({ callId: 'c1', userId: 'user1', callType: 'morning', transcript: '' });
-
+      .send(makeVapiBody('midday'));
     expect(res.status).toBe(401);
   });
 });
 
-describe('POST /webhooks/vapi — morning call', () => {
-  const morningBody = {
-    event: 'call.ended',
-    callId: 'vapi-call-1',
-    userId: 'user1',
-    callType: 'morning',
-    transcript: 'Good morning...',
-    structuredOutput: {
-      microActions: [
-        { id: 'a1', title: 'Write landing page copy' },
-        { id: 'a2', title: 'Set up Stripe checkout' },
-        { id: 'a3', title: 'Email 5 potential users' },
-      ],
-    },
-    durationSeconds: 312,
-  };
+// ─── VAPI webhooks — midday call ──────────────────────────────────────────────
 
-  it('creates session with 3 micro-actions when session does not exist', async () => {
-    // get() calls: (1) conv query, (2) session doc
-    db.get
-      .mockResolvedValueOnce(convSnapshot('conv-1'))   // conversations query
-      .mockResolvedValueOnce({ exists: false });        // session doc
-
+describe('POST /webhooks/vapi — midday call', () => {
+  it('acknowledges and updates conversation', async () => {
+    // midday branch skips session writes, goes straight to conversation update
     const res = await request(app)
       .post('/webhooks/vapi')
       .set('x-vapi-secret', VAPI_SECRET)
-      .send(morningBody);
-
+      .send(makeVapiBody('midday'));
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ received: true });
-
-    // Session created via set
-    expect(db.set).toHaveBeenCalledTimes(1);
-    const setCall = db.set.mock.calls[0][0] as {
-      userId: string;
-      microActions: string;
-      morningCallId: string;
-    };
-    expect(setCall.userId).toBe('user1');
-    expect(setCall.morningCallId).toBe('conv-1');
-    // microActions encrypted and contains the 3 actions
-    expect(setCall.microActions).toContain('Write landing page copy');
-  });
-
-  it('updates existing session with morning micro-actions', async () => {
-    db.get
-      .mockResolvedValueOnce(emptyConvSnapshot)              // conversations query
-      .mockResolvedValueOnce({                               // session doc exists
-        exists: true,
-        data: () => ({ userId: 'user1', date: '2026-05-19', microActions: `enc(${JSON.stringify([])})` }),
-      });
-
-    const res = await request(app)
-      .post('/webhooks/vapi')
-      .set('x-vapi-secret', VAPI_SECRET)
-      .send(morningBody);
-
-    expect(res.status).toBe(200);
-    expect(db.update).toHaveBeenCalledTimes(1);
-    const updateCall = db.update.mock.calls[0][0] as { microActions: string };
-    expect(updateCall.microActions).toContain('Set up Stripe checkout');
-  });
-
-  it('updates conversation transcript when conversation is found', async () => {
-    db.get
-      .mockResolvedValueOnce(convSnapshot('conv-abc'))
-      .mockResolvedValueOnce({ exists: false });
-
-    const res = await request(app)
-      .post('/webhooks/vapi')
-      .set('x-vapi-secret', VAPI_SECRET)
-      .send(morningBody);
-
-    expect(res.status).toBe(200);
-    // set for session + update for conversation = 2 total write ops
-    const allUpdateCalls = db.update.mock.calls;
-    const convUpdate = allUpdateCalls.find(
-      (c) => typeof (c[0] as { durationSeconds?: number }).durationSeconds === 'number',
-    );
-    expect(convUpdate).toBeDefined();
-    expect((convUpdate![0] as { durationSeconds: number }).durationSeconds).toBe(312);
+    expect(db.update).toHaveBeenCalled();
   });
 });
 
+// ─── VAPI webhooks — evening call ────────────────────────────────────────────
+
 describe('POST /webhooks/vapi — evening call', () => {
-  const eveningBody = {
-    event: 'call.ended',
-    callId: 'vapi-call-2',
-    userId: 'user1',
-    callType: 'evening',
-    transcript: 'Good evening...',
-    structuredOutput: {
-      completedActionIds: ['a1', 'a3'],
-      score: 7,
-      scoreRationale: 'Solid progress on two out of three tasks.',
-      tomorrowMicroActions: [
-        { id: 'b1', title: 'Finalize pricing page' },
-        { id: 'b2', title: 'Schedule user interviews' },
-        { id: 'b3', title: 'Write blog post outline' },
-      ],
-    },
-    durationSeconds: 287,
-  };
-
-  it('updates today session with score and marks completed action IDs', async () => {
-    // get() calls: (1) session, (2) conv query, (3) tomorrow session, (4) user doc
+  it('updates today session with score', async () => {
+    const tasks = [{ id: 'a1', title: 'Do thing', isCompleted: false, completedAt: null }];
     db.get
       .mockResolvedValueOnce({
         exists: true,
-        data: () => ({
-          userId: 'user1',
-          date: '2026-05-19',
-          microActions: `enc(${JSON.stringify(existingActions)})`,
-        }),
+        data: () => ({ userId: 'user1', date: '2026-05-19', tasks: `enc(${JSON.stringify(tasks)})` }),
       })
-      .mockResolvedValueOnce(convSnapshot('conv-2'))   // conversations query
-      .mockResolvedValueOnce({ exists: false })         // tomorrow session
-      .mockResolvedValueOnce({ exists: false });        // user doc
-
-    const res = await request(app)
-      .post('/webhooks/vapi')
-      .set('x-vapi-secret', VAPI_SECRET)
-      .send(eveningBody);
-
-    expect(res.status).toBe(200);
-    expect(res.body).toEqual({ received: true });
-
-    // Today's session updated
-    const todayUpdate = db.update.mock.calls.find(
-      (c) => (c[0] as { score?: number }).score !== undefined,
-    );
-    expect(todayUpdate).toBeDefined();
-    const todayUpdateData = todayUpdate![0] as {
-      score: number;
-      eveningCallId: string;
-      scoreRationale: string;
-      microActions: string;
-    };
-    expect(todayUpdateData.score).toBe(7);
-    expect(todayUpdateData.eveningCallId).toBe('conv-2');
-    // completed actions a1 and a3 should be marked done in encrypted payload
-    expect(todayUpdateData.microActions).toContain('Write landing page');
-  });
-
-  it('writes tomorrow micro-actions to the tomorrow session document', async () => {
-    db.get
-      .mockResolvedValueOnce({
-        exists: true,
-        data: () => ({
-          userId: 'user1',
-          date: '2026-05-19',
-          microActions: `enc(${JSON.stringify(existingActions)})`,
-        }),
-      })
-      .mockResolvedValueOnce(emptyConvSnapshot)
-      .mockResolvedValueOnce({ exists: false })   // tomorrow session doesn't exist
+      .mockResolvedValueOnce({ exists: false })   // tomorrow session
       .mockResolvedValueOnce({ exists: false });   // user doc
 
     const res = await request(app)
       .post('/webhooks/vapi')
       .set('x-vapi-secret', VAPI_SECRET)
-      .send(eveningBody);
+      .send(makeVapiBody('evening'));
 
     expect(res.status).toBe(200);
-
-    // Find the set() call for tomorrow's session (contains tomorrowMicroActions field)
-    const tomorrowSet = db.set.mock.calls.find(
-      (c) => (c[0] as { tomorrowMicroActions?: string }).tomorrowMicroActions !== undefined,
+    const scoreUpdate = db.update.mock.calls.find(
+      (c) => (c[0] as { score?: number }).score !== undefined,
     );
-    expect(tomorrowSet).toBeDefined();
-    const tomorrowData = tomorrowSet![0] as { tomorrowMicroActions: string };
-    expect(tomorrowData.tomorrowMicroActions).toContain('Finalize pricing page');
+    expect(scoreUpdate).toBeDefined();
+    expect((scoreUpdate![0] as { score: number }).score).toBe(7);
   });
 
-  it('updates user voice seconds in Firestore', async () => {
+  it('sets up tomorrow session skeleton', async () => {
+    const tasks = [{ id: 'a1', title: 'Do thing', isCompleted: false, completedAt: null }];
     db.get
       .mockResolvedValueOnce({
         exists: true,
-        data: () => ({
-          userId: 'user1',
-          date: '2026-05-19',
-          microActions: `enc(${JSON.stringify([])})`,
-        }),
+        data: () => ({ userId: 'user1', date: '2026-05-19', tasks: `enc(${JSON.stringify(tasks)})` }),
       })
-      .mockResolvedValueOnce(emptyConvSnapshot)
+      .mockResolvedValueOnce({ exists: false })   // tomorrow session
+      .mockResolvedValueOnce({ exists: false });   // user doc
+
+    await request(app)
+      .post('/webhooks/vapi')
+      .set('x-vapi-secret', VAPI_SECRET)
+      .send(makeVapiBody('evening'));
+
+    const tomorrowSet = db.set.mock.calls.find(
+      (c) => (c[0] as { middayCallId?: null }).middayCallId !== undefined,
+    );
+    expect(tomorrowSet).toBeDefined();
+  });
+
+  it('updates user voice seconds', async () => {
+    db.get
+      .mockResolvedValueOnce({
+        exists: true,
+        data: () => ({ userId: 'user1', date: '2026-05-19', tasks: `enc(${JSON.stringify([])})` }),
+      })
       .mockResolvedValueOnce({ exists: false })
       .mockResolvedValueOnce({
         exists: true,
         data: () => ({ totalVoiceSecondsUsed: 600, voiceMinutesUsedThisWeek: 300 }),
       });
 
-    const res = await request(app)
+    await request(app)
       .post('/webhooks/vapi')
       .set('x-vapi-secret', VAPI_SECRET)
-      .send(eveningBody);
-
-    expect(res.status).toBe(200);
+      .send(makeVapiBody('evening'));
 
     const userUpdate = db.update.mock.calls.find(
       (c) => (c[0] as { totalVoiceSecondsUsed?: number }).totalVoiceSecondsUsed !== undefined,
     );
     expect(userUpdate).toBeDefined();
-    const updateData = userUpdate![0] as {
-      totalVoiceSecondsUsed: number;
-      voiceMinutesUsedThisWeek: number;
-    };
-    expect(updateData.totalVoiceSecondsUsed).toBe(600 + 287);
-    expect(updateData.voiceMinutesUsedThisWeek).toBe(300 + 287);
+    expect((userUpdate![0] as { totalVoiceSecondsUsed: number }).totalVoiceSecondsUsed).toBe(600 + 300);
+  });
+});
+
+// ─── VAPI webhooks — weekly call ─────────────────────────────────────────────
+
+describe('POST /webhooks/vapi — weekly call', () => {
+  it('marks the week complete and writes a retrospective', async () => {
+    db.get.mockResolvedValue({ exists: true, data: () => ({
+      weekNumber: 23, year: 2026, startDate: '2026-06-01', endDate: '2026-06-07',
+      tasks: `enc(${JSON.stringify([{ id: 't1', title: 'A', isCompleted: true, completedAt: null }])})`,
+    }) });
+    const res = await request(app)
+      .post('/webhooks/vapi')
+      .set('x-vapi-secret', VAPI_SECRET)
+      .send(makeVapiBody('weekly'));
+    expect(res.status).toBe(200);
+    expect(db.set).toHaveBeenCalled();
+  });
+});
+
+// ─── VAPI webhooks — other event types ───────────────────────────────────────
+
+describe('POST /webhooks/vapi — non-end-of-call events', () => {
+  it('acknowledges non-end-of-call events silently', async () => {
+    const res = await request(app)
+      .post('/webhooks/vapi')
+      .set('x-vapi-secret', VAPI_SECRET)
+      .send({ message: { type: 'status-update', call: { id: 'c1' } } });
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ received: true });
   });
 });
 
@@ -316,7 +258,6 @@ describe('POST /webhooks/revenuecat — security', () => {
       .post('/webhooks/revenuecat')
       .set('Authorization', 'Bearer wrong-secret')
       .send({ event: { type: 'INITIAL_PURCHASE', app_user_id: 'user1' } });
-
     expect(res.status).toBe(401);
   });
 
@@ -324,7 +265,6 @@ describe('POST /webhooks/revenuecat — security', () => {
     const res = await request(app)
       .post('/webhooks/revenuecat')
       .send({ event: { type: 'INITIAL_PURCHASE', app_user_id: 'user1' } });
-
     expect(res.status).toBe(401);
   });
 });
@@ -335,10 +275,8 @@ describe('POST /webhooks/revenuecat — subscription events', () => {
       .post('/webhooks/revenuecat')
       .set('Authorization', `Bearer ${RC_SECRET}`)
       .send({ event: { type: 'INITIAL_PURCHASE', app_user_id: 'user1' } });
-
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ received: true });
-
     expect(db.set).toHaveBeenCalledTimes(1);
     const setData = db.set.mock.calls[0][0] as { subscriptionStatus: string };
     expect(setData.subscriptionStatus).toBe('premium');
@@ -349,7 +287,6 @@ describe('POST /webhooks/revenuecat — subscription events', () => {
       .post('/webhooks/revenuecat')
       .set('Authorization', `Bearer ${RC_SECRET}`)
       .send({ event: { type: 'RENEWAL', app_user_id: 'user2' } });
-
     expect(res.status).toBe(200);
     const setData = db.set.mock.calls[0][0] as { subscriptionStatus: string };
     expect(setData.subscriptionStatus).toBe('premium');
@@ -360,7 +297,6 @@ describe('POST /webhooks/revenuecat — subscription events', () => {
       .post('/webhooks/revenuecat')
       .set('Authorization', `Bearer ${RC_SECRET}`)
       .send({ event: { type: 'UNCANCELLATION', app_user_id: 'user3' } });
-
     expect(res.status).toBe(200);
     const setData = db.set.mock.calls[0][0] as { subscriptionStatus: string };
     expect(setData.subscriptionStatus).toBe('premium');
@@ -371,7 +307,6 @@ describe('POST /webhooks/revenuecat — subscription events', () => {
       .post('/webhooks/revenuecat')
       .set('Authorization', `Bearer ${RC_SECRET}`)
       .send({ event: { type: 'EXPIRATION', app_user_id: 'user1' } });
-
     expect(res.status).toBe(200);
     const setData = db.set.mock.calls[0][0] as { subscriptionStatus: string };
     expect(setData.subscriptionStatus).toBe('free');
@@ -382,7 +317,6 @@ describe('POST /webhooks/revenuecat — subscription events', () => {
       .post('/webhooks/revenuecat')
       .set('Authorization', `Bearer ${RC_SECRET}`)
       .send({ event: { type: 'CANCELLATION', app_user_id: 'user1' } });
-
     expect(res.status).toBe(200);
     const setData = db.set.mock.calls[0][0] as { subscriptionStatus: string };
     expect(setData.subscriptionStatus).toBe('free');
@@ -393,7 +327,6 @@ describe('POST /webhooks/revenuecat — subscription events', () => {
       .post('/webhooks/revenuecat')
       .set('Authorization', `Bearer ${RC_SECRET}`)
       .send({ event: { type: 'BILLING_ISSUE', app_user_id: 'user1' } });
-
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ received: true });
     expect(db.set).not.toHaveBeenCalled();
@@ -404,7 +337,6 @@ describe('POST /webhooks/revenuecat — subscription events', () => {
       .post('/webhooks/revenuecat')
       .set('Authorization', `Bearer ${RC_SECRET}`)
       .send({});
-
     expect(res.status).toBe(400);
   });
 });
