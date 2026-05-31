@@ -1,37 +1,41 @@
 import * as cron from 'node-cron';
 import { db, sendPushNotification } from './firebase';
+import { usersDueAt, REMINDER_COPY, ReminderUser, ReminderSettings } from './reminders';
+
+const TICK_WINDOW_MINUTES = 5;
 
 interface UserDoc {
   fcmToken?: string;
+  notificationSettings?: ReminderSettings;
 }
 
-async function sendBulkNotification(title: string, body: string): Promise<void> {
+async function loadReminderUsers(): Promise<ReminderUser[]> {
+  const snap = await db.collection('users').get();
+  const users: ReminderUser[] = [];
+  for (const doc of snap.docs) {
+    const data = doc.data() as UserDoc;
+    if (!data.fcmToken || !data.notificationSettings) continue;
+    users.push({ uid: doc.id, fcmToken: data.fcmToken, settings: data.notificationSettings });
+  }
+  return users;
+}
+
+export async function runReminderTick(now: Date = new Date()): Promise<void> {
   try {
-    const snapshot = await db.collection('users').where('fcmToken', '!=', null).get();
-    const sends = snapshot.docs
-      .map((doc) => (doc.data() as UserDoc).fcmToken)
-      .filter((token): token is string => typeof token === 'string' && token.length > 0)
-      .map((token) => sendPushNotification(token, title, body).catch(() => {}));
-    await Promise.all(sends);
+    const users = await loadReminderUsers();
+    const due = usersDueAt(users, now, TICK_WINDOW_MINUTES);
+    await Promise.all(
+      due.map((d) => {
+        const copy = REMINDER_COPY[d.kind];
+        return sendPushNotification(d.fcmToken, copy.title, copy.body).catch(() => {});
+      }),
+    );
   } catch {
-    // Scheduler errors should not crash the server
+    // never crash the server from the scheduler
   }
 }
 
 export function startScheduler(): void {
-  // Morning check-in reminder at 8:00 AM daily
-  cron.schedule('0 8 * * *', () => {
-    void sendBulkNotification(
-      'Good morning! 🌅',
-      'Time for your morning check-in with your AI coach.'
-    );
-  });
-
-  // Evening check-in reminder at 9:00 PM daily
-  cron.schedule('0 21 * * *', () => {
-    void sendBulkNotification(
-      'Evening check-in time 🌙',
-      'Reflect on today and plan tomorrow with your AI coach.'
-    );
-  });
+  // Every 5 minutes; TICK_WINDOW_MINUTES must match the cron cadence.
+  cron.schedule('*/5 * * * *', () => { void runReminderTick(); });
 }
