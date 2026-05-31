@@ -9,19 +9,19 @@ import UserNotifications
         return granted
     }
 
-    func scheduleCheckInReminders(morningHour: Int, morningMinute: Int, eveningHour: Int, eveningMinute: Int) {
-        center.removePendingNotificationRequests(withIdentifiers: ["morning_checkin", "evening_checkin"])
+    func scheduleCheckInReminders(middayHour: Int, middayMinute: Int, eveningHour: Int, eveningMinute: Int) {
+        center.removePendingNotificationRequests(withIdentifiers: ["midday_checkin", "evening_checkin"])
 
         scheduleDaily(
-            identifier: "morning_checkin",
-            title: "Good morning! 🌅",
-            body: "Time for your morning check-in with your AI coach.",
-            hour: morningHour,
-            minute: morningMinute
+            identifier: "midday_checkin",
+            title: "Midday check-in time",
+            body: "Time for your midday check-in with your AI coach.",
+            hour: middayHour,
+            minute: middayMinute
         )
         scheduleDaily(
             identifier: "evening_checkin",
-            title: "Evening check-in time 🌙",
+            title: "Evening check-in time",
             body: "Reflect on today and plan tomorrow with your AI coach.",
             hour: eveningHour,
             minute: eveningMinute
@@ -33,8 +33,8 @@ import UserNotifications
         guard enabled else { return }
         scheduleDaily(
             identifier: "streak_reminder",
-            title: "Don't break your streak! 🔥",
-            body: "Complete at least one micro-action today to keep going.",
+            title: "Don't break your streak!",
+            body: "Complete at least one task today to keep going.",
             hour: 19,
             minute: 0
         )

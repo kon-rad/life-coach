@@ -1,10 +1,14 @@
 import Foundation
 
 struct NotificationSettings: Codable, Sendable {
-    var morningReminderHour: Int
-    var morningReminderMinute: Int
+    var middayReminderHour: Int
+    var middayReminderMinute: Int
     var eveningReminderHour: Int
     var eveningReminderMinute: Int
+    var weeklyPlanningWeekday: Int      // 0=Sun ... 6=Sat
+    var weeklyPlanningHour: Int
+    var weeklyPlanningMinute: Int
+    var timeZone: String                // IANA, e.g. "America/New_York"
     var streakReminders: Bool
 }
 
