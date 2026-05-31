@@ -1,5 +1,5 @@
 import XCTest
-@testable import LiveCoach
+@testable import Soularc
 
 final class ProxyAPIClientTests: XCTestCase {
     func testAPIErrorHttpErrorDescription() {

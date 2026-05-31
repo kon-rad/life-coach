@@ -26,6 +26,21 @@ packages:
   Vapi:
     url: https://github.com/VapiAI/ios
     branch: main
+schemes:
+  LiveCoach:
+    build:
+      targets:
+        LiveCoach: all
+        LiveCoachTests: [test]
+    test:
+      targets:
+        - LiveCoachTests
+      config: Debug
+      gatherCoverageData: false
+    run:
+      config: Debug
+    archive:
+      config: Release
 targets:
   LiveCoach:
     type: application
@@ -79,3 +94,5 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.konradgnat.lifecoachai.tests
         GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Soularc.app/Soularc
+        BUNDLE_LOADER: $(TEST_HOST)
