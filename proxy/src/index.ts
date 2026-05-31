@@ -5,6 +5,7 @@ import { startScheduler } from './services/scheduler';
 
 import authRouter from './routes/auth';
 import projectRouter from './routes/project';
+import weeksRouter from './routes/weeks';
 import sessionsRouter from './routes/sessions';
 import chatRouter from './routes/chat';
 import conversationsRouter from './routes/conversations';
@@ -23,6 +24,7 @@ app.get('/health', (_req, res) => {
 
 app.use('/auth', authRouter);
 app.use('/project', projectRouter);
+app.use('/weeks', weeksRouter);
 app.use('/sessions', sessionsRouter);
 app.use('/chat', chatRouter);
 app.use('/conversations', conversationsRouter);
