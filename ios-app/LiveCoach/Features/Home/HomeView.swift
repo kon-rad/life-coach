@@ -6,6 +6,7 @@ struct HomeView: View {
     @State private var viewModel: HomeViewModel?
     @State private var showVoiceCall = false
     @State private var voiceCallService = VoiceCallService()
+    @State private var selectedCallType: CoachCallType = .midday
 
     private var isMorning: Bool { Calendar.current.component(.hour, from: Date()) < 17 }
     private var greeting: String { isMorning ? "Good morning." : "Good evening." }
@@ -24,7 +25,8 @@ struct HomeView: View {
                     greetingSection
                     scoreCard(vm: vm)
                     callCTACard(vm: vm)
-                    microActionsCard(vm: vm)
+                    weekTasksCard(vm: vm)
+                    dayTasksCard(vm: vm)
                     statsRow(vm: vm)
                 } else {
                     ProgressView()
@@ -45,7 +47,7 @@ struct HomeView: View {
         .fullScreenCover(isPresented: $showVoiceCall) {
             if let vm = viewModel {
                 VoiceCallView(
-                    callType: vm.shouldShowMorningCTA ? .morningCall : .eveningCall,
+                    callType: vm.shouldShowMiddayCTA ? .midday : .evening,
                     voiceCallService: voiceCallService
                 )
             }
@@ -161,8 +163,8 @@ struct HomeView: View {
     // MARK: - Call CTA
 
     private func callCTACard(vm: HomeViewModel) -> some View {
-        let callDone = isMorning ? vm.isMorningCallDone : vm.isEveningCallDone
-        let allDone = vm.isMorningCallDone && vm.isEveningCallDone
+        let callDone = isMorning ? vm.isMiddayCallDone : vm.isEveningCallDone
+        let allDone = vm.isMiddayCallDone && vm.isEveningCallDone
 
         return LCCard(padding: 0) {
             Button {
@@ -182,8 +184,8 @@ struct HomeView: View {
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text(callDone
-                             ? (allDone ? "Great work today!" : (isMorning ? "Morning call complete" : "Evening call complete"))
-                             : (isMorning ? "Start morning call" : "Start evening reflection"))
+                             ? (allDone ? "Great work today!" : (isMorning ? "Midday check-in complete" : "Evening call complete"))
+                             : (isMorning ? "Start midday check-in" : "Start evening reflection"))
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundStyle(Color.lcText)
                             .tracking(-0.3)
@@ -212,19 +214,19 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - Micro-actions
+    // MARK: - Week Tasks
 
-    private func microActionsCard(vm: HomeViewModel) -> some View {
-        let actions = vm.todaySession?.microActions ?? []
-        let doneCount = actions.filter { $0.isCompleted }.count
+    private func weekTasksCard(vm: HomeViewModel) -> some View {
+        let weekTasks = vm.currentWeekTasks
+        let doneCount = weekTasks.filter { $0.isCompleted }.count
 
         return LCCard(padding: 0) {
             VStack(spacing: 0) {
                 HStack {
-                    LCSectionLabel(title: "Today's actions").padding(0)
+                    LCSectionLabel(title: "This week").padding(0)
                     Spacer()
-                    if !actions.isEmpty {
-                        Text("\(doneCount)/\(actions.count)")
+                    if !weekTasks.isEmpty {
+                        Text("\(doneCount)/\(weekTasks.count)")
                             .font(.system(size: 12))
                             .foregroundStyle(Color.lcTextFaint)
                             .monospacedDigit()
@@ -234,22 +236,76 @@ struct HomeView: View {
                 .padding(.horizontal, 20)
                 .padding(.bottom, 4)
 
-                if actions.isEmpty {
-                    Text(vm.isMorningCallDone
-                         ? "Your actions will appear shortly."
-                         : "Complete your morning check-in to get today's actions.")
+                if weekTasks.isEmpty {
+                    Text("Your weekly tasks will appear after your planning call.")
                         .font(.system(size: 14))
                         .foregroundStyle(Color.lcTextDim)
                         .tracking(-0.1)
                         .padding(.horizontal, 20)
                         .padding(.vertical, 20)
                 } else {
-                    ForEach(Array(actions.enumerated()), id: \.element.id) { idx, action in
-                        MicroActionRowView(
-                            action: action,
-                            isLast: idx == actions.count - 1
+                    ForEach(Array(weekTasks.enumerated()), id: \.element.id) { idx, task in
+                        HStack(spacing: 10) {
+                            Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
+                                .foregroundStyle(task.isCompleted ? Color.lcAccent : Color.lcTextFaint)
+                                .padding(.leading, 20)
+                            Text(task.title)
+                                .font(.system(size: 15))
+                                .foregroundStyle(Color.lcText)
+                                .strikethrough(task.isCompleted)
+                                .multilineTextAlignment(.leading)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.vertical, 14)
+                                .padding(.trailing, 20)
+                        }
+                        .overlay(alignment: .bottom) {
+                            if idx < weekTasks.count - 1 { Color.lcHairline.frame(height: 0.5) }
+                        }
+                    }
+                    .padding(.bottom, 4)
+                }
+            }
+        }
+    }
+
+    // MARK: - Day Tasks
+
+    private func dayTasksCard(vm: HomeViewModel) -> some View {
+        let tasks = vm.todaySession?.tasks ?? []
+        let doneCount = tasks.filter { $0.isCompleted }.count
+
+        return LCCard(padding: 0) {
+            VStack(spacing: 0) {
+                HStack {
+                    LCSectionLabel(title: "Today's tasks").padding(0)
+                    Spacer()
+                    if !tasks.isEmpty {
+                        Text("\(doneCount)/\(tasks.count)")
+                            .font(.system(size: 12))
+                            .foregroundStyle(Color.lcTextFaint)
+                            .monospacedDigit()
+                    }
+                }
+                .padding(.top, 16)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 4)
+
+                if tasks.isEmpty {
+                    Text(vm.isMiddayCallDone
+                         ? "Your tasks will appear shortly."
+                         : "Complete your midday check-in to get today's tasks.")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Color.lcTextDim)
+                        .tracking(-0.1)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 20)
+                } else {
+                    ForEach(Array(tasks.enumerated()), id: \.element.id) { idx, task in
+                        DayTaskRowView(
+                            task: task,
+                            isLast: idx == tasks.count - 1
                         ) { isCompleted in
-                            Task { await vm.toggleMicroAction(action, isCompleted: isCompleted) }
+                            Task { await vm.toggleDayTask(task, isCompleted: isCompleted) }
                         }
                         .padding(.horizontal, 20)
                     }

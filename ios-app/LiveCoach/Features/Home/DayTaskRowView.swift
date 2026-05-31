@@ -1,16 +1,16 @@
 import SwiftUI
 
-struct MicroActionRowView: View {
-    let action: MicroAction
+struct DayTaskRowView: View {
+    let task: DayTask
     let onToggle: (Bool) -> Void
     var isLast: Bool = false
     @State private var localCompleted: Bool
 
-    init(action: MicroAction, isLast: Bool = false, onToggle: @escaping (Bool) -> Void) {
-        self.action = action
+    init(task: DayTask, isLast: Bool = false, onToggle: @escaping (Bool) -> Void) {
+        self.task = task
         self.isLast = isLast
         self.onToggle = onToggle
-        _localCompleted = State(initialValue: action.isCompleted)
+        _localCompleted = State(initialValue: task.isCompleted)
     }
 
     var body: some View {
@@ -34,7 +34,7 @@ struct MicroActionRowView: View {
                 }
                 .padding(.top, 1)
 
-                Text(action.title)
+                Text(task.title)
                     .font(.system(size: 15.5, weight: .medium))
                     .foregroundStyle(localCompleted ? Color.lcText.opacity(0.45) : Color.lcText)
                     .strikethrough(localCompleted, color: Color.lcText.opacity(0.45))
@@ -48,7 +48,7 @@ struct MicroActionRowView: View {
         .overlay(alignment: .bottom) {
             if !isLast { Color.lcHairline.frame(height: 0.5) }
         }
-        .onChange(of: action.isCompleted) { _, newValue in
+        .onChange(of: task.isCompleted) { _, newValue in
             localCompleted = newValue
         }
     }

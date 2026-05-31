@@ -9,11 +9,13 @@ import Foundation
     var error: Error?
 
     private let sessionService: SessionService
+    private let weekService: WeekService
     private let api = ProxyAPIClient.shared
     private let appState: AppState?
 
     init(sessionService: SessionService, appState: AppState? = nil) {
         self.sessionService = sessionService
+        self.weekService = WeekService()
         self.appState = appState
     }
 
@@ -29,6 +31,7 @@ import Foundation
         }
         await sessionService.loadToday()
         todaySession = sessionService.todaySession
+        await weekService.load()
         do {
             let stats: UserStats = try await api.get("/user/stats")
             userStats = stats
@@ -39,12 +42,12 @@ import Foundation
         }
     }
 
-    func toggleMicroAction(_ action: MicroAction, isCompleted: Bool) async {
+    func toggleDayTask(_ task: DayTask, isCompleted: Bool) async {
         guard let sessionDate = todaySession?.date else { return }
         do {
-            try await sessionService.toggleMicroAction(
+            try await sessionService.toggleDayTask(
                 sessionDate: sessionDate,
-                actionId: action.id,
+                taskId: task.id,
                 isCompleted: isCompleted
             )
             todaySession = sessionService.todaySession
@@ -53,9 +56,10 @@ import Foundation
         }
     }
 
-    var isMorningCallDone: Bool { todaySession?.morningCallId != nil }
+    var currentWeekTasks: [WeekTask] { weekService.currentWeek?.tasks ?? [] }
+    var isMiddayCallDone: Bool { todaySession?.middayCallId != nil }
     var isEveningCallDone: Bool { todaySession?.eveningCallId != nil }
-    var shouldShowMorningCTA: Bool { !isMorningCallDone && Calendar.current.component(.hour, from: Date()) < 14 }
+    var shouldShowMiddayCTA: Bool { !isMiddayCallDone && Calendar.current.component(.hour, from: Date()) < 14 }
     var shouldShowEveningCTA: Bool { !isEveningCallDone && Calendar.current.component(.hour, from: Date()) >= 14 }
     var displayScore: Double? { userStats?.averageScore }
     var todayScore: Int? { todaySession?.score }

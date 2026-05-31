@@ -1,5 +1,5 @@
 import XCTest
-@testable import LiveCoach
+@testable import Soularc
 
 @MainActor
 final class HomeViewModelTests: XCTestCase {
@@ -12,9 +12,9 @@ final class HomeViewModelTests: XCTestCase {
     func testShouldShowCTAsReturnBoolWithoutCrash() {
         let sessionService = SessionService()
         let viewModel = HomeViewModel(sessionService: sessionService)
-        let morning = viewModel.shouldShowMorningCTA
+        let midday = viewModel.shouldShowMiddayCTA
         let evening = viewModel.shouldShowEveningCTA
-        XCTAssertTrue(morning || !morning)
+        XCTAssertTrue(midday || !midday)
         XCTAssertTrue(evening || !evening)
     }
 }
