@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleExecutable</key>
+    <string>$(EXECUTABLE_NAME)</string>
+    <key>CFBundleDisplayName</key>
+    <string>Soularc</string>
+    <key>CFBundleName</key>
+    <string>Soularc</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.konradgnat.lifecoachai</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>UILaunchScreen</key>
+    <dict/>
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+    </array>
+    <key>UIApplicationSceneManifest</key>
+    <dict>
+        <key>UIApplicationSupportsMultipleScenes</key>
+        <false/>
+    </dict>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Soularc uses the microphone for voice check-ins with your AI coach.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>Soularc transcribes your spoken goal during onboarding.</string>
+    <key>NSUserNotificationUsageDescription</key>
+    <string>Soularc sends daily coaching reminders.</string>
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>remote-notification</string>
+    </array>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>com.googleusercontent.apps.990782828495-eq4p2pb0rmhsqo6e3hi0pgb4ok0lesff</string>
+            </array>
+        </dict>
+    </array>
+</dict>
+</plist>
