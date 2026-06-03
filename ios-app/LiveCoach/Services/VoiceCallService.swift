@@ -1,3 +1,4 @@
+import AVFoundation
 import Combine
 import Foundation
 import Vapi
@@ -6,6 +7,8 @@ enum VoiceCallError: Error, Equatable {
     case quotaExceeded
     case notAvailableOnFreeTier
     case unavailable
+    /// Microphone access is required for the WebRTC call but was denied/restricted.
+    case microphoneDenied
 }
 
 /// Drives an in-app voice call through the official Vapi iOS SDK.
@@ -58,6 +61,14 @@ enum VoiceCallError: Error, Equatable {
     /// that 402 is surfaced here as `.quotaExceeded`.
     func startCall(type: CoachCallType, hasActivePlan: Bool) async throws {
         if !hasActivePlan { throw VoiceCallError.notAvailableOnFreeTier }
+
+        // The Vapi SDK places a live WebRTC call, which silently fails without mic access.
+        // Request/verify permission up front so a denial surfaces as an actionable error
+        // ("Open Settings") instead of the generic connect failure.
+        guard await ensureMicrophonePermission() else {
+            callState = .ended
+            throw VoiceCallError.microphoneDenied
+        }
 
         callState = .connecting
         error = nil
@@ -137,6 +148,18 @@ enum VoiceCallError: Error, Equatable {
             )
             self.callState = .ended
             self.cleanup()
+        }
+    }
+
+    /// Returns true once the app holds microphone permission, prompting the user on the
+    /// first call. Returns false if access is denied or restricted (the caller surfaces an
+    /// "Open Settings" path rather than letting the WebRTC connection fail opaquely).
+    private func ensureMicrophonePermission() async -> Bool {
+        switch AVAudioApplication.shared.recordPermission {
+        case .granted: return true
+        case .denied: return false
+        case .undetermined: return await AVAudioApplication.requestRecordPermission()
+        @unknown default: return await AVAudioApplication.requestRecordPermission()
         }
     }
 

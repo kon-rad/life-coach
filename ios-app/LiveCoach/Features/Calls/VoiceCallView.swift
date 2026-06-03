@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Whether the in-call screen shows the voice animation or the full text transcript.
 enum CallDisplayMode: String, CaseIterable {
@@ -192,10 +193,24 @@ struct VoiceCallView: View {
         } message: {
             Text("In-app voice calls aren't available yet. You can keep using text chat with your coach in the meantime.")
         }
+        .alert("Microphone Access Needed", isPresented: Binding(
+            get: { voiceCallError == .microphoneDenied },
+            set: { if !$0 { voiceCallError = nil } }
+        )) {
+            Button("Open Settings") {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+                dismiss()
+            }
+            Button("Cancel", role: .cancel) { dismiss() }
+        } message: {
+            Text("Soularc needs microphone access for voice check-ins. Enable it in Settings, then try again.")
+        }
         .alert("Couldn't start the call", isPresented: $showConnectError) {
             Button("OK") { dismiss() }
         } message: {
-            Text("We couldn't connect your call. Make sure microphone access is enabled for Soularc in Settings and that you're online, then try again.")
+            Text(connectErrorMessage)
         }
         .onChange(of: voiceCallService.callState) { _, newState in
             if newState == .ended {
@@ -216,6 +231,24 @@ struct VoiceCallView: View {
             timerTask?.cancel()
             dismissTask?.cancel()
         }
+    }
+
+    /// Tailors the connect-failure copy to the actual cause so a server outage or timeout
+    /// no longer masquerades as a microphone problem (which previously hid a proxy 500).
+    private var connectErrorMessage: String {
+        if let apiError = voiceCallService.error as? APIError {
+            switch apiError {
+            case .httpError, .unauthorized, .invalidURL, .noAuthToken:
+                return "We couldn't reach the coaching server. Check your connection and try again in a moment."
+            case .decodingError:
+                return "The coaching server returned an unexpected response. Please try again."
+            }
+        }
+        let nsError = voiceCallService.error as NSError?
+        if nsError?.domain == "VoiceCall" && nsError?.code == -1001 {
+            return "The call timed out before connecting. Please check your connection and try again."
+        }
+        return "We couldn't connect your call. Make sure you're online and that microphone access is enabled for Soularc in Settings, then try again."
     }
 
     private var toastMessage: String {
