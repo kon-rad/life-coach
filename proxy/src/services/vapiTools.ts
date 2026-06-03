@@ -6,21 +6,34 @@ import { weekId, weekRange, upcomingWeekRange, weekIdForDate } from './weeks';
 interface Task { id: string; title: string; isCompleted: boolean; completedAt: string | null; }
 
 function makeTasks(titles: string[]): Task[] {
-  return titles.slice(0, 3).map((title) => ({
+  return titles.map((title) => ({
     id: crypto.randomUUID(), title, isCompleted: false, completedAt: null,
   }));
 }
 
+/** True when the user has no `weeks` docs yet — i.e. this is their first session. */
+async function userHasNoWeeks(uid: string): Promise<boolean> {
+  const snap = await db.collection('weeks').where('userId', '==', uid).limit(1).get();
+  // Firestore query snapshots expose `.empty`; fall back to `.docs` length defensively.
+  return snap.empty === true || (snap.docs?.length ?? 0) === 0;
+}
+
 async function setWeekTasks(uid: string, titles: string[]): Promise<string> {
-  const range = upcomingWeekRange(new Date());
+  // On the very first session there is no prior week, so the 3 tasks belong to the
+  // CURRENT week. On every later weekly call (a retro), they belong to the UPCOMING week.
+  const firstSession = await userHasNoWeeks(uid);
+  const range = firstSession ? weekRange(new Date()) : upcomingWeekRange(new Date());
   const id = `${uid}_${range.year}-W${String(range.week).padStart(2, '0')}`;
   await db.collection('weeks').doc(id).set({
     userId: uid, weekNumber: range.week, year: range.year,
     startDate: range.startDate, endDate: range.endDate,
-    tasks: await encryptJSON(makeTasks(titles)), status: 'planned',
+    tasks: await encryptJSON(makeTasks(titles.slice(0, 3))),
+    status: firstSession ? 'active' : 'planned',
     retrospectiveId: null, createdAt: new Date().toISOString(),
   });
-  return `Saved 3 tasks for week ${range.week} (starting ${range.startDate}).`;
+  return firstSession
+    ? `Saved your 3 tasks for this week (week ${range.week}, starting ${range.startDate}).`
+    : `Saved 3 tasks for week ${range.week} (starting ${range.startDate}).`;
 }
 
 async function setDayTasks(uid: string, date: string, titles: string[]): Promise<string> {
@@ -38,7 +51,8 @@ async function setDayTasks(uid: string, date: string, titles: string[]): Promise
     score: (base as { score?: number }).score ?? null,
     scoreRationale: (base as { scoreRationale?: string }).scoreRationale ?? null,
   });
-  return `Saved 3 tasks for ${date}.`;
+  const n = titles.length;
+  return `Saved ${n} task${n === 1 ? '' : 's'} for ${date}.`;
 }
 
 async function toggleInDoc(
@@ -88,9 +102,6 @@ async function completeTask(uid: string, taskId: string, isCompleted: boolean): 
   }
   return 'Could not find that task.';
 }
-
-// Suppress unused import warning — weekRange is exported for use in other modules
-void weekRange;
 
 export async function handleToolCall(
   uid: string, name: string, args: Record<string, unknown>,

@@ -1,5 +1,12 @@
 import SwiftUI
 
+/// Whether the in-call screen shows the voice animation or the full text transcript.
+enum CallDisplayMode: String, CaseIterable {
+    case voice, text
+    var label: String { self == .voice ? "Voice" : "Text" }
+    var icon: String { self == .voice ? "waveform" : "text.bubble" }
+}
+
 struct VoiceCallView: View {
     let callType: CoachCallType
     var voiceCallService: VoiceCallService
@@ -11,7 +18,9 @@ struct VoiceCallView: View {
     @State private var showToast = false
     @State private var dismissTask: Task<Void, Never>?
     @State private var voiceCallError: VoiceCallError?
+    @State private var showConnectError = false
     @State private var timerTask: Task<Void, Never>?
+    @State private var displayMode: CallDisplayMode = .voice
 
     private var callLabel: String {
         switch callType {
@@ -55,50 +64,30 @@ struct VoiceCallView: View {
                         .font(.system(size: 14, design: .monospaced))
                         .foregroundStyle(.white.opacity(0.6))
                         .monospacedDigit()
+
+                    if let remaining = liveRemainingMinutes {
+                        Text(remaining > 0
+                             ? "\(remaining) min left this week"
+                             : "Weekly minutes used up")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(remaining > 0 ? .white.opacity(0.35) : Color.lcRed.opacity(0.8))
+                            .tracking(0.3)
+                    }
                 }
                 .padding(.top, 28)
 
-                Spacer()
-
-                // Waveform center
-                VStack(spacing: 18) {
-                    LCWaveform(isActive: isActive && !isMuted, color: Color.lcAccent, barCount: 11)
-                        .frame(width: 280, height: 72)
-
-                    HStack(spacing: 8) {
-                        Circle()
-                            .fill(isMuted ? Color.lcRed : (isActive ? Color.lcGreen : Color.lcAccent))
-                            .frame(width: 6, height: 6)
-                        Text(statusText)
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(.white.opacity(0.5))
-                            .tracking(1.6)
+                // Content area — voice animation or full text transcript.
+                Group {
+                    switch displayMode {
+                    case .voice: voiceContent
+                    case .text: textContent
                     }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                // Transcript preview (last 2 messages)
-                if !voiceCallService.transcript.isEmpty {
-                    VStack(spacing: 4) {
-                        ForEach(voiceCallService.transcript.suffix(2)) { msg in
-                            HStack {
-                                if msg.role == .user { Spacer(minLength: 40) }
-                                Text(msg.content)
-                                    .font(.system(size: 15.5))
-                                    .foregroundStyle(.white.opacity(msg.role == .user ? 0.6 : 0.9))
-                                    .padding(.horizontal, 14)
-                                    .padding(.vertical, 10)
-                                    .background(.white.opacity(msg.role == .user ? 0.08 : 0.14))
-                                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                                    .lineLimit(2)
-                                if msg.role == .assistant { Spacer(minLength: 40) }
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 24)
-                    .padding(.top, 32)
-                }
-
-                Spacer()
+                // Voice / Text toggle
+                displayModeToggle
+                    .padding(.bottom, 4)
 
                 // Controls row
                 HStack(spacing: 0) {
@@ -169,8 +158,7 @@ struct VoiceCallView: View {
             do {
                 try await voiceCallService.startCall(
                     type: callType,
-                    isPremium: appState.isPremium,
-                    voiceMinutesRemaining: appState.userStats?.voiceMinutesRemainingThisWeek ?? 0
+                    hasActivePlan: appState.hasActivePlan
                 )
             } catch let err as VoiceCallError {
                 voiceCallError = err
@@ -204,13 +192,23 @@ struct VoiceCallView: View {
         } message: {
             Text("In-app voice calls aren't available yet. You can keep using text chat with your coach in the meantime.")
         }
+        .alert("Couldn't start the call", isPresented: $showConnectError) {
+            Button("OK") { dismiss() }
+        } message: {
+            Text("We couldn't connect your call. Make sure microphone access is enabled for Soularc in Settings and that you're online, then try again.")
+        }
         .onChange(of: voiceCallService.callState) { _, newState in
             if newState == .ended {
                 timerTask?.cancel()
-                withAnimation { showToast = true }
-                dismissTask = Task {
-                    try? await Task.sleep(for: .seconds(1.5))
-                    dismiss()
+                if voiceCallService.error != nil {
+                    // Failed to connect — show why instead of the success toast.
+                    showConnectError = true
+                } else {
+                    withAnimation { showToast = true }
+                    dismissTask = Task {
+                        try? await Task.sleep(for: .seconds(1.5))
+                        dismiss()
+                    }
                 }
             }
         }
@@ -223,7 +221,7 @@ struct VoiceCallView: View {
     private var toastMessage: String {
         switch callType {
         case .midday, .evening: return "Check-in saved! Your tasks will appear shortly."
-        case .weekly: return "Weekly plan saved! Your tasks for next week are set."
+        case .weekly: return "Weekly plan saved! Your tasks are set."
         case .free: return "Call saved."
         }
     }
@@ -241,6 +239,118 @@ struct VoiceCallView: View {
 
     private func formatTime(_ seconds: Int) -> String {
         "\(seconds / 60):\(String(format: "%02d", seconds % 60))"
+    }
+
+    /// Whole minutes of weekly quota left right now: the balance at call start minus the
+    /// time already spent on this call. `nil` until the proxy reports the starting balance.
+    private var liveRemainingMinutes: Int? {
+        guard let start = voiceCallService.remainingSecondsAtStart else { return nil }
+        return max(0, start - elapsedSeconds) / 60
+    }
+
+    // MARK: - Voice content (animation only)
+
+    @ViewBuilder
+    private var voiceContent: some View {
+        VStack(spacing: 18) {
+            LCWaveform(isActive: isActive && !isMuted, color: Color.lcAccent, barCount: 11)
+                .frame(width: 280, height: 72)
+
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(isMuted ? Color.lcRed : (isActive ? Color.lcGreen : Color.lcAccent))
+                    .frame(width: 6, height: 6)
+                Text(statusText)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.5))
+                    .tracking(1.6)
+            }
+        }
+    }
+
+    // MARK: - Text content (full transcript)
+
+    @ViewBuilder
+    private var textContent: some View {
+        if voiceCallService.transcript.isEmpty {
+            VStack(spacing: 10) {
+                Image(systemName: "text.bubble")
+                    .font(.system(size: 30))
+                    .foregroundStyle(.white.opacity(0.25))
+                Text("Your conversation will appear here as you talk.")
+                    .font(.system(size: 14))
+                    .foregroundStyle(.white.opacity(0.4))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 48)
+            }
+        } else {
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(spacing: 8) {
+                        ForEach(voiceCallService.transcript) { msg in
+                            messageBubble(msg)
+                        }
+                        Color.clear.frame(height: 1).id("bottom")
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 16)
+                }
+                .onChange(of: voiceCallService.transcript.count) { _, _ in
+                    withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo("bottom", anchor: .bottom) }
+                }
+                .onChange(of: voiceCallService.transcript.last?.content) { _, _ in
+                    proxy.scrollTo("bottom", anchor: .bottom)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func messageBubble(_ msg: Message) -> some View {
+        HStack {
+            if msg.role == .user { Spacer(minLength: 44) }
+            Text(msg.content)
+                .font(.system(size: 15.5))
+                .foregroundStyle(.white.opacity(msg.role == .user ? 0.7 : 0.95))
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(.white.opacity(msg.role == .user ? 0.08 : 0.14))
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .frame(maxWidth: .infinity, alignment: msg.role == .user ? .trailing : .leading)
+            if msg.role == .assistant { Spacer(minLength: 44) }
+        }
+    }
+
+    // MARK: - Voice / Text toggle
+
+    @ViewBuilder
+    private var displayModeToggle: some View {
+        HStack(spacing: 4) {
+            ForEach(CallDisplayMode.allCases, id: \.self) { mode in
+                let selected = displayMode == mode
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) { displayMode = mode }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: mode.icon)
+                            .font(.system(size: 12, weight: .semibold))
+                        Text(mode.label)
+                            .font(.system(size: 13, weight: .semibold))
+                    }
+                    .foregroundStyle(selected ? Color.black : .white.opacity(0.6))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 9)
+                    .background(selected ? Color.white : Color.clear)
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(4)
+        .background(.white.opacity(0.1))
+        .clipShape(Capsule())
+        .overlay(Capsule().stroke(.white.opacity(0.12), lineWidth: 0.5))
+        .frame(width: 220)
     }
 
     @ViewBuilder

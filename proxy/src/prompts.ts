@@ -40,6 +40,12 @@ export interface CallPromptContext {
   todayTasks: PromptTask[];
   /** Human-readable recent history (last 7 days completion + scores). */
   recentHistory: string;
+  /**
+   * True when this is the user's very first session (no weeks exist yet). Only the
+   * weekly prompt branches on it: instead of retro-ing a past week, it welcomes the
+   * user and sets the CURRENT week's 3 tasks. See buildWeeklyPrompt.
+   */
+  isFirstSession?: boolean;
 }
 
 export interface RetrospectiveContext {
@@ -53,6 +59,16 @@ export interface RetrospectiveContext {
   dailyBreakdown: string;
   /** Concatenated transcripts/summaries from the week's conversations. */
   conversationDigest: string;
+}
+
+export interface DayScoreContext {
+  profile: UserProfile;
+  /** This week's 3 tasks (with completion), for context on the bigger picture. */
+  weekTasks: PromptTask[];
+  /** Today's tasks (with completion). */
+  dayTasks: PromptTask[];
+  /** The evening check-in transcript. */
+  transcript: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -128,14 +144,31 @@ export function buildEveningPrompt(ctx: CallPromptContext): string {
     `1. Ask how today went overall.\n` +
     `2. Go through each of today's tasks — what got done, what didn't. For each, call complete_task with its id and the correct isCompleted value.\n` +
     `3. Celebrate wins, acknowledge misses without judgment.\n` +
-    `4. Propose and agree on exactly 3 tasks for TOMORROW that move this week's tasks forward, then call set_day_tasks with tomorrow's date (YYYY-MM-DD) and the 3 task titles.\n` +
-    `5. Confirm tomorrow's 3 tasks aloud before ending.\n\n` +
+    `4. Propose and agree on the tasks for TOMORROW that move this week's tasks forward (as many as makes sense), then call set_day_tasks with tomorrow's date (YYYY-MM-DD) and the task titles.\n` +
+    `5. Confirm tomorrow's tasks aloud before ending.\n\n` +
     VOICE_RULES
   );
 }
 
 /** Weekly planning + retrospective: retro the ending week, set next week's 3 tasks. */
 export function buildWeeklyPrompt(ctx: CallPromptContext): string {
+  // First session ever: there is no prior week to retro. Welcome the user and set
+  // THIS week's 3 tasks (set_week_tasks writes the current week on the first session).
+  if (ctx.isFirstSession) {
+    return (
+      `You are a warm, direct life coach, and this is your FIRST SESSION with ${ctx.profile.name || 'this person'} — ` +
+      `the very start of you working together. ${buildPersona(ctx.profile)}\n\n` +
+      `This is week ${ctx.weekNumber} (${ctx.weekStartDate} → ${ctx.weekEndDate}).\n\n` +
+      `Your job for this first session:\n` +
+      `1. Warmly welcome them and briefly explain how this works: every week you set 3 meaningful tasks together, ` +
+      `with short daily check-ins to keep momentum, and a weekly review.\n` +
+      `2. Ask what they most want to focus on or change right now, and what matters to them.\n` +
+      `3. Together, agree on exactly 3 concrete tasks for THIS week (${ctx.weekStartDate} → ${ctx.weekEndDate}).\n` +
+      `4. Call set_week_tasks with the 3 task titles.\n` +
+      `5. Confirm the 3 tasks for this week aloud before ending, and tell them you'll check in with them daily.\n\n` +
+      VOICE_RULES
+    );
+  }
   return (
     `You are a warm, direct life coach running the weekly planning + retrospective meeting. ${buildPersona(ctx.profile)}\n\n` +
     `The week that is ending is week ${ctx.weekNumber} (${ctx.weekStartDate} → ${ctx.weekEndDate}).\n` +
@@ -197,6 +230,37 @@ export function buildRetrospectivePrompt(ctx: RetrospectiveContext): string {
 }
 
 // ---------------------------------------------------------------------------
+// Day scoring (Together AI, end-of-evening-call webhook)
+// ---------------------------------------------------------------------------
+
+/**
+ * Builds the prompt that scores a single day at the conclusion of the evening
+ * check-in. The model MUST return strict JSON:
+ *   { "score": <int 0-10>, "summary": string, "advice": string }
+ *
+ * The score reflects BOTH how much got done and how much effort was shown.
+ */
+export function buildDayScorePrompt(ctx: DayScoreContext): string {
+  return (
+    `You are ${ctx.profile.name ? `${ctx.profile.name}'s ` : 'a '}life coach scoring how their day went, ` +
+    `based on the evening check-in. ${buildPersona(ctx.profile)}\n\n` +
+    `This week's 3 tasks:\n${formatTasks(ctx.weekTasks)}\n\n` +
+    `Today's tasks:\n${formatTasks(ctx.dayTasks)}\n\n` +
+    `Evening check-in transcript:\n${ctx.transcript}\n\n` +
+    `Score the day from 0 to 10. The score must reflect BOTH how much of today's tasks ` +
+    `got done AND how much genuine effort they put in (a hard day with real effort but ` +
+    `little finished is not a 2; coasting through an easy day is not a 10). Be honest and ` +
+    `specific — reference the actual tasks and what they said, not generic encouragement.\n\n` +
+    `Return ONLY a JSON object with these exact keys and no other text:\n` +
+    `{\n` +
+    `  "score": <integer from 0 to 10>,\n` +
+    `  "summary": "2-4 sentences recapping how the day actually went",\n` +
+    `  "advice": "1-3 sentences of specific, personalized advice for tomorrow, in your coaching voice"\n` +
+    `}`
+  );
+}
+
+// ---------------------------------------------------------------------------
 // VAPI tool definitions (register once via POST https://api.vapi.ai/tool,
 // attach to the assistant via toolIds). All point at /webhooks/vapi/tools.
 // ---------------------------------------------------------------------------
@@ -229,8 +293,8 @@ export const TOOL_DEFINITIONS = [
     function: {
       name: 'set_day_tasks',
       description:
-        "Set the 3 tasks for a specific day. In the evening debrief, set TOMORROW's tasks. " +
-        'Overwrites any existing tasks for that date.',
+        "Set the tasks for a specific day (any number — as many as you and the user agree on). " +
+        "In the evening debrief, set TOMORROW's tasks. Overwrites any existing tasks for that date.",
       parameters: {
         type: 'object',
         properties: {
@@ -240,10 +304,9 @@ export const TOOL_DEFINITIONS = [
           },
           tasks: {
             type: 'array',
-            description: 'Exactly 3 short task titles for that day.',
+            description: 'The short task titles for that day (one or more).',
             items: { type: 'string' },
-            minItems: 3,
-            maxItems: 3,
+            minItems: 1,
           },
         },
         required: ['date', 'tasks'],

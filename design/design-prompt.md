@@ -39,7 +39,7 @@ References: Calm, Linear, Things 3, Reflect
 1. **Welcome** — App name, tagline, 3 bullet points, "Get Started" CTA
 2. **Privacy** — Headline about encryption, 3 trust bullets, "Continue" CTA
 3. **Sign In** — Apple Sign In (primary), Google Sign In (secondary)
-4. **How It Works** — 4 illustrated steps (weekly planning, midday check-in, evening debrief, automatic retrospective) + subscription paywall card (Monthly / Annual)
+4. **How It Works** — 4 illustrated steps (weekly planning, midday check-in, evening debrief, automatic retrospective) + subscription paywall card (Weekly / Yearly)
 
 ### Main App (4 tabs)
 

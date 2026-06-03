@@ -33,6 +33,25 @@ final class ModelTests: XCTestCase {
         XCTAssertEqual(decoded.tasks[1].id, "a2")
     }
 
+    func testDailySessionDecodesAdvice() throws {
+        let json = """
+        {"id":"u1_2026-06-03","userId":"u1","date":"2026-06-03","tasks":[],
+         "score":8,"summary":"Solid day.","advice":"Start the hard task first tomorrow."}
+        """
+        let decoded = try JSONDecoder().decode(DailySession.self, from: Data(json.utf8))
+        XCTAssertEqual(decoded.score, 8)
+        XCTAssertEqual(decoded.advice, "Start the hard task first tomorrow.")
+    }
+
+    func testDailySessionToleratesMissingAdvice() throws {
+        let json = """
+        {"id":"u1_2026-06-03","userId":"u1","date":"2026-06-03","tasks":[]}
+        """
+        let decoded = try JSONDecoder().decode(DailySession.self, from: Data(json.utf8))
+        XCTAssertNil(decoded.advice)
+        XCTAssertNil(decoded.score)
+    }
+
     func testConversationTypeRawValue() {
         XCTAssertEqual(ConversationType.middayCall.rawValue, "middayCall")
     }
@@ -69,6 +88,35 @@ final class ModelTests: XCTestCase {
         let d = JSONDecoder(); d.dateDecodingStrategy = .iso8601
         let r = try d.decode(Retrospective.self, from: json)
         XCTAssertEqual(r.onePercent, "plan")
+    }
+
+    /// Regression: the proxy writes `createdAt` via JS `Date.toISOString()` (fractional
+    /// seconds), e.g. `2026-06-02T08:35:16.124Z`. With the old `.iso8601` decoder this
+    /// threw, so `/weeks` decoded to nothing and the Tasks view showed no tasks even
+    /// though `set_week_tasks` had saved them. `JSONDecoder.proxy()` must decode it.
+    func testWeekDecodesWithFractionalSecondCreatedAt() throws {
+        let json = """
+        {"id":"u_2026-W23","userId":"u","weekNumber":23,"year":2026,
+         "startDate":"2026-06-01","endDate":"2026-06-07",
+         "tasks":[{"id":"t1","title":"Ship","isCompleted":false,"completedAt":null}],
+         "status":"active","retrospectiveId":null,"createdAt":"2026-06-02T08:35:16.124Z"}
+        """.data(using: .utf8)!
+        let week = try JSONDecoder.proxy().decode(Week.self, from: json)
+        XCTAssertEqual(week.weekNumber, 23)
+        XCTAssertEqual(week.tasks.count, 1)
+    }
+
+    /// Regression: same fractional-seconds timestamp on a conversation broke the
+    /// `/conversations` list decode, so the Conversations view showed no call history.
+    func testConversationDecodesWithFractionalSecondCreatedAt() throws {
+        let json = """
+        {"id":"c1","userId":"u","type":"weeklyCall","messages":[],
+         "messageCount":4,"vapiCallId":null,"durationSeconds":88,
+         "createdAt":"2026-06-02T08:34:21.869Z","summary":"recap"}
+        """.data(using: .utf8)!
+        let convo = try JSONDecoder.proxy().decode(Conversation.self, from: json)
+        XCTAssertEqual(convo.type, .weeklyCall)
+        XCTAssertEqual(convo.displayMessageCount, 4)
     }
 
     func testDailySessionUsesTasks() throws {

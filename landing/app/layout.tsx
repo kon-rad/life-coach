@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Soularc — Your AI life coach. Private by design.',
+  title: 'Soularc — Plan the week. Win the day.',
   description:
-    'A daily voice check-in with an AI coach. Three specific actions to complete. A score at the end of the day. Private by design.',
+    'One weekly voice call sets your 3 goals for the week. Short daily check-ins with an AI coach build your 3 tasks a day, track what got done, and score each day. A weekly retrospective closes the loop. Private by design.',
 };
 
 export default function RootLayout({

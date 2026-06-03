@@ -8,7 +8,7 @@ Everything you need to configure before the app can run end-to-end. Work through
 
 | Service | Code | Config |
 |---|---|---|
-| Firebase (Firestore + Auth) | ✅ | ⚠️ Bundle ID mismatch in plist |
+| Firebase (Firestore + Auth) | ✅ | ✅ Bundle ID `com.konradgnat.lifecoachai` matches plist |
 | Apple Sign-In | ✅ | ⚠️ Capability needs enabling |
 | Google Sign-In | ✅ | ❌ Missing CLIENT_ID in GoogleService-Info.plist |
 | Push Notifications (FCM) | ✅ | ❌ APNs key not uploaded to Firebase |
@@ -19,15 +19,16 @@ Everything you need to configure before the app can run end-to-end. Work through
 
 ## 1. Firebase
 
-### 1a. Fix the bundle ID mismatch
+### 1a. Bundle ID
 
-The current `GoogleService-Info.plist` was downloaded for bundle ID `com.konradgnat.lifecoachai` but the app uses `com.konradgnat.livecoach`.
+The app's bundle ID is `com.konradgnat.lifecoachai` (set in `ios-app/project.yml` and
+`ios-app/LiveCoach/Info.plist`). The bundled `GoogleService-Info.plist` must match it.
 
 **In Firebase Console → Project Settings → Your Apps:**
-1. If `com.konradgnat.livecoach` doesn't exist, click **Add app → iOS+**
-2. Bundle ID: `com.konradgnat.livecoach`
-3. Download the new `GoogleService-Info.plist`
-4. Replace `ios-app/LiveCoach/GoogleService-Info.plist` with the new file
+1. Confirm an iOS app registered with bundle ID `com.konradgnat.lifecoachai` exists
+   (if not, **Add app → iOS+** with that bundle ID).
+2. Download its `GoogleService-Info.plist`.
+3. Ensure `ios-app/LiveCoach/GoogleService-Info.plist` is that file.
 
 ### 1b. Enable Authentication providers
 
@@ -84,7 +85,7 @@ The Swift code is complete. You need to enable the capability in Xcode and Apple
 ### 2b. Apple Developer Portal
 
 **developer.apple.com → Certificates, Identifiers & Profiles → Identifiers:**
-1. Find `com.konradgnat.livecoach`
+1. Find `com.konradgnat.lifecoachai`
 2. Check that **Sign in with Apple** is ticked
 3. Click **Save**
 
@@ -156,7 +157,7 @@ In Xcode → **LiveCoach** target → **Signing & Capabilities:**
 
 1. Sign in at app.revenuecat.com
 2. **Create new project** → name it "Live Coach"
-3. **Add iOS app** → enter bundle ID `com.konradgnat.livecoach`
+3. **Add iOS app** → enter bundle ID `com.konradgnat.lifecoachai`
 4. Copy the **Public SDK key** (starts with `appl_`)
 
 ### 5b. Wire up the API key
@@ -182,7 +183,7 @@ static let revenueCatAPIKey = ProcessInfo.processInfo.environment["REVENUECAT_AP
 
 **appstoreconnect.apple.com → your app → In-App Purchases:**
 1. Create a **subscription group** (e.g., "Live Coach Premium")
-2. Add a subscription (e.g., weekly at $9.99/month, monthly at $29.99/year — your call on pricing)
+2. Add the subscriptions — two tiers × two periods (Standard weekly/yearly, Premium weekly/yearly). See `docs/pricing-plans-and-setup.md` for the exact product IDs and prices.
 3. Note the product identifiers
 
 ### 5e. Connect products in RevenueCat
@@ -302,7 +303,7 @@ npm run dev
 ## Final Checklist
 
 ### iOS (Xcode)
-- [ ] `GoogleService-Info.plist` downloaded for bundle ID `com.konradgnat.livecoach`
+- [ ] `GoogleService-Info.plist` downloaded for bundle ID `com.konradgnat.lifecoachai`
 - [ ] `Info.plist` URL scheme updated with real `REVERSED_CLIENT_ID`
 - [ ] **Sign in with Apple** capability added
 - [ ] **Push Notifications** capability added
@@ -311,7 +312,7 @@ npm run dev
 - [ ] `PROXY_BASE_URL` set in Xcode scheme environment (e.g., `http://localhost:3000` for local dev)
 
 ### Firebase Console
-- [ ] iOS app registered with `com.konradgnat.livecoach`
+- [ ] iOS app registered with `com.konradgnat.lifecoachai`
 - [ ] Apple and Google sign-in methods enabled
 - [ ] Firestore database created with security rules
 - [ ] APNs key uploaded to Cloud Messaging
@@ -340,7 +341,7 @@ npm run dev
 - [ ] `VAPI_API_KEY` and `VAPI_ASSISTANT_ID` added to proxy `.env`
 
 ### Apple Developer Portal
-- [ ] Sign in with Apple enabled for `com.konradgnat.livecoach`
+- [ ] Sign in with Apple enabled for `com.konradgnat.lifecoachai`
 - [ ] APNs key created and downloaded
 - [ ] Push Notifications capability enabled for the App ID
 

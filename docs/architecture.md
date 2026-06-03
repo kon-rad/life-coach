@@ -530,7 +530,7 @@ Rules:
 - `Purchases.shared.purchase(package:)` for subscriptions and credit packs
 
 **Entitlement IDs:**
-- `"premium"` — active subscription (monthly or annual)
+- `"premium"` — active subscription (weekly or yearly)
 - `"voice_credits_30"` — 30-minute credit pack
 - `"voice_credits_120"` — 120-minute credit pack
 

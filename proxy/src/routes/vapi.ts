@@ -4,6 +4,7 @@ import { db } from '../services/firebase';
 import { encrypt, encryptJSON, decrypt, decryptJSON } from '../services/encryption';
 import { authMiddleware, AuthedRequest } from '../middleware/auth';
 import { weekId as computeWeekId, weekRange } from '../services/weeks';
+import { usedSecondsThisWeek, VoiceUsageDoc } from '../services/voiceUsage';
 import {
   buildMiddayPrompt, buildEveningPrompt, buildWeeklyPrompt, buildFreePrompt,
   UserProfile, CoachingStyle, PromptTask, CallPromptContext,
@@ -24,6 +25,15 @@ interface UserProfileDoc {
 const CALL_TYPE_TO_CONVERSATION_TYPE: Record<CallType, string> = {
   midday: 'middayCall', evening: 'eveningCall', weekly: 'weeklyCall', free: 'freeVoice',
 };
+
+// Per-call hard caps (seconds): daily check-ins 7 min, weekly planning 15 min.
+// Keep in sync with docs/pricing-plans-and-setup.md §5.5.
+const MAX_CALL_SECONDS: Record<CallType, number> = {
+  midday: 420, evening: 420, weekly: 900, free: 420,
+};
+
+// Fallback weekly quota when the user doc has none (e.g. legacy/free docs).
+const DEFAULT_WEEKLY_QUOTA_SECONDS = 3600;
 
 function todayDateString(): string { return new Date().toISOString().slice(0, 10); }
 function daysAgoDateString(n: number): string {
@@ -66,6 +76,12 @@ async function getCurrentWeek(uid: string) {
   };
 }
 
+/** True when the user has no `weeks` docs yet — drives the first-session weekly prompt. */
+async function isFirstSession(uid: string): Promise<boolean> {
+  const snap = await db.collection('weeks').where('userId', '==', uid).limit(1).get();
+  return snap.empty === true || (snap.docs?.length ?? 0) === 0;
+}
+
 async function getTodayTasks(uid: string): Promise<PromptTask[]> {
   const doc = await db.collection('sessions').doc(`${uid}_${todayDateString()}`).get();
   if (!doc.exists) return [];
@@ -99,14 +115,27 @@ router.post('/init-call', async (req, res: Response) => {
   }
   const type = callType as CallType;
   try {
+    // Weekly voice-quota gate: block before doing any work if the user is out of minutes.
+    const userSnap = await db.collection('users').doc(uid).get();
+    const userData = (userSnap.exists ? userSnap.data() : {}) as VoiceUsageDoc & { weeklyVoiceQuotaSeconds?: number };
+    const quotaSeconds = userData.weeklyVoiceQuotaSeconds ?? DEFAULT_WEEKLY_QUOTA_SECONDS;
+    const usedSeconds = usedSecondsThisWeek(uid, userData, new Date());
+    const remainingSeconds = Math.max(0, quotaSeconds - usedSeconds);
+    if (remainingSeconds <= 0) {
+      res.status(402).json({ error: 'weekly_quota_exhausted', remainingSeconds: 0, quotaSeconds });
+      return;
+    }
+
     const [profile, week, todayTasks, recentHistory] = await Promise.all([
       getUserProfile(uid), getCurrentWeek(uid), getTodayTasks(uid), getRecentHistory(uid),
     ]);
+    // Only the weekly prompt branches on first-session; avoid the extra read otherwise.
+    const firstSession = type === 'weekly' ? await isFirstSession(uid) : false;
     const ctx: CallPromptContext = {
       profile,
       weekTasks: week.tasks, weekNumber: week.weekNumber,
       weekStartDate: week.startDate, weekEndDate: week.endDate,
-      todayTasks, recentHistory,
+      todayTasks, recentHistory, isFirstSession: firstSession,
     };
     let systemPrompt: string;
     if (type === 'midday') systemPrompt = buildMiddayPrompt(ctx);
@@ -122,10 +151,20 @@ router.post('/init-call', async (req, res: Response) => {
       userId: uid, type: CALL_TYPE_TO_CONVERSATION_TYPE[type],
       messages: await encryptJSON([]), vapiCallId: null, durationSeconds: null,
       createdAt: new Date().toISOString(), summary: await encrypt(''),
+      // Read back by the weekly end-of-call webhook: a first-session weekly call must
+      // not retrospect the week it just created. See routes/webhooks.ts.
+      isFirstSession: firstSession,
     });
 
     res.json({
       conversationId, assistantId, systemPrompt,
+      // Hard-stop the call at whichever is smaller: the per-call cap, or the seconds the user
+      // has left in their weekly pool. This prevents a single call from overrunning the weekly
+      // quota (e.g. 100s left but a 420s daily cap). VAPI ends the call at this bound; the
+      // end-of-call webhook then deducts the actual duration. `remainingSeconds > 0` is
+      // guaranteed here (the gate above 402s an exhausted pool).
+      maxDurationSeconds: Math.min(MAX_CALL_SECONDS[type], remainingSeconds),
+      remainingSeconds,
       metadata: { userId: uid, callType: type, conversationId },
     });
   } catch (err) {

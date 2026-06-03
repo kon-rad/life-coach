@@ -7,9 +7,9 @@ struct HowItWorksView: View {
     @State private var subscriptionService = SubscriptionService()
     @State private var showPaywall = false
     @State private var isFetchingOfferings = false
-    @State private var selectedPlan: PlanOption = .annual
+    @State private var selectedPlan: PlanOption = .yearly
 
-    enum PlanOption { case monthly, annual }
+    enum PlanOption { case weekly, yearly }
 
     private let steps: [(icon: String, title: String, detail: String)] = [
         ("mic",        "Morning voice call",   "Five minutes to set the day. The AI gives you 3 micro-actions."),
@@ -78,18 +78,18 @@ struct HowItWorksView: View {
                     .padding(.bottom, 14)
 
                     HStack(spacing: 10) {
-                        ForEach([PlanOption.monthly, .annual], id: \.self) { plan in
+                        ForEach([PlanOption.weekly, .yearly], id: \.self) { plan in
                             let isSelected = selectedPlan == plan
                             Button { selectedPlan = plan } label: {
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text(plan == .monthly ? "Monthly" : "Annual")
+                                    Text(plan == .weekly ? "Weekly" : "Yearly")
                                         .font(.system(size: 13, weight: .medium))
                                         .foregroundStyle(Color.lcTextDim)
-                                    Text(plan == .monthly ? "$19" : "$129")
+                                    Text(plan == .weekly ? "From $8.99" : "From $299.99")
                                         .font(.system(size: 20, weight: .semibold))
                                         .foregroundStyle(Color.lcText)
                                         .tracking(-0.4)
-                                    Text(plan == .monthly ? "per month" : "$10.75/mo · save 43%")
+                                    Text(plan == .weekly ? "per week" : "≈ $25/mo · save 36%")
                                         .font(.system(size: 11.5))
                                         .foregroundStyle(Color.lcTextDim)
                                 }

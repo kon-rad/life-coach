@@ -13,10 +13,17 @@ struct CallsView: View {
         ZStack(alignment: .bottomTrailing) {
             ScrollView {
                 VStack(spacing: 0) {
-                    if chatService.conversations.isEmpty && !chatService.isLoading {
-                        emptyState
-                    } else {
+                    if !chatService.conversations.isEmpty {
                         conversationList
+                    } else if chatService.isLoading {
+                        // First load in flight: show a spinner rather than an empty
+                        // conversationList card, which would flash a narrow band.
+                        ProgressView()
+                            .tint(Color.lcAccent)
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 80)
+                    } else {
+                        emptyState
                     }
                 }
                 .padding(.horizontal, 16)
@@ -43,12 +50,13 @@ struct CallsView: View {
         .sheet(isPresented: $showNewConversation) {
             NewConversationSheet(
                 chatService: chatService,
+                hasActivePlan: appState.hasActivePlan,
                 showSheet: $showNewConversation,
                 selectedConversation: $selectedConversation,
                 showVoiceCall: $showVoiceCall,
                 selectedCallType: $selectedCallType
             )
-            .presentationDetents([.height(380)])
+            .presentationDetents([.height(560)])
             .presentationBackground(Color.lcSurface)
             .presentationCornerRadius(24)
         }
@@ -182,5 +190,6 @@ func callTypeLabel(_ type: ConversationType) -> String {
     case .weeklyCall:  return "Weekly planning"
     case .freeChat:    return "Text chat"
     case .freeVoice:   return "Voice call"
+    case .unknown:     return "Conversation"
     }
 }

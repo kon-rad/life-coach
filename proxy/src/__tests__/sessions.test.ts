@@ -10,6 +10,7 @@ jest.mock('../services/firebase', () => ({
     doc: jest.fn().mockReturnThis(),
     where: jest.fn().mockReturnThis(),
     get: jest.fn(),
+    set: jest.fn().mockResolvedValue(undefined),
     update: jest.fn().mockResolvedValue(undefined),
   },
 }));
@@ -35,6 +36,7 @@ const { db } = jest.requireMock('../services/firebase') as {
     doc: jest.Mock;
     where: jest.Mock;
     get: jest.Mock;
+    set: jest.Mock;
     update: jest.Mock;
   };
 };
@@ -162,6 +164,98 @@ describe('PUT /sessions/:date/tasks/:taskId/complete', () => {
       .set('Authorization', 'Bearer valid-token')
       .send({ isCompleted: true });
 
+    expect(res.status).toBe(404);
+  });
+});
+
+describe('POST /sessions/:date/tasks', () => {
+  it('adds a task, creating the session doc when absent', async () => {
+    db.get.mockResolvedValueOnce({ exists: false });
+    const res = await request(app)
+      .post('/sessions/2026-06-02/tasks')
+      .set('Authorization', 'Bearer valid-token')
+      .send({ title: 'New task' });
+    expect(res.status).toBe(201);
+    expect(res.body.tasks).toHaveLength(1);
+    expect(res.body.tasks[0].title).toBe('New task');
+    expect(res.body.tasks[0].isCompleted).toBe(false);
+    expect(db.set).toHaveBeenCalled();
+  });
+
+  it('appends to an existing session (supports more than 3 day tasks)', async () => {
+    db.get.mockResolvedValueOnce({ exists: true, id: 'user1_2026-05-19', data: () => sessionDocData() });
+    const res = await request(app)
+      .post('/sessions/2026-05-19/tasks')
+      .set('Authorization', 'Bearer valid-token')
+      .send({ title: 'Third task' });
+    expect(res.status).toBe(201);
+    expect(res.body.tasks).toHaveLength(3);
+  });
+
+  it('returns 400 when title is missing', async () => {
+    const res = await request(app)
+      .post('/sessions/2026-06-02/tasks')
+      .set('Authorization', 'Bearer valid-token')
+      .send({});
+    expect(res.status).toBe(400);
+  });
+});
+
+describe('PUT /sessions/:date/tasks/:taskId (edit)', () => {
+  it('renames a task', async () => {
+    db.get.mockResolvedValueOnce({ exists: true, id: 'user1_2026-05-19', data: () => sessionDocData() });
+    const res = await request(app)
+      .put('/sessions/2026-05-19/tasks/action1')
+      .set('Authorization', 'Bearer valid-token')
+      .send({ title: 'Renamed task' });
+    expect(res.status).toBe(200);
+    expect(res.body.tasks.find((t: { id: string }) => t.id === 'action1').title).toBe('Renamed task');
+  });
+
+  it('toggles completion', async () => {
+    db.get.mockResolvedValueOnce({ exists: true, id: 'user1_2026-05-19', data: () => sessionDocData() });
+    const res = await request(app)
+      .put('/sessions/2026-05-19/tasks/action1')
+      .set('Authorization', 'Bearer valid-token')
+      .send({ isCompleted: true });
+    expect(res.status).toBe(200);
+    expect(res.body.tasks.find((t: { id: string }) => t.id === 'action1').isCompleted).toBe(true);
+  });
+
+  it('returns 400 when neither title nor isCompleted is provided', async () => {
+    const res = await request(app)
+      .put('/sessions/2026-05-19/tasks/action1')
+      .set('Authorization', 'Bearer valid-token')
+      .send({});
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 404 when the task is not found', async () => {
+    db.get.mockResolvedValueOnce({ exists: true, data: () => sessionDocData() });
+    const res = await request(app)
+      .put('/sessions/2026-05-19/tasks/missing')
+      .set('Authorization', 'Bearer valid-token')
+      .send({ title: 'x' });
+    expect(res.status).toBe(404);
+  });
+});
+
+describe('DELETE /sessions/:date/tasks/:taskId', () => {
+  it('removes a task', async () => {
+    db.get.mockResolvedValueOnce({ exists: true, id: 'user1_2026-05-19', data: () => sessionDocData() });
+    const res = await request(app)
+      .delete('/sessions/2026-05-19/tasks/action1')
+      .set('Authorization', 'Bearer valid-token');
+    expect(res.status).toBe(200);
+    expect(res.body.tasks).toHaveLength(1);
+    expect(res.body.tasks.find((t: { id: string }) => t.id === 'action1')).toBeUndefined();
+  });
+
+  it('returns 404 when the task is absent', async () => {
+    db.get.mockResolvedValueOnce({ exists: true, data: () => sessionDocData() });
+    const res = await request(app)
+      .delete('/sessions/2026-05-19/tasks/missing')
+      .set('Authorization', 'Bearer valid-token');
     expect(res.status).toBe(404);
   });
 });

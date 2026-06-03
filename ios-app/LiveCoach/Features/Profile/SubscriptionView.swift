@@ -11,12 +11,17 @@ struct SubscriptionPaywallView: View {
     @State private var errorMessage: String?
     @State private var showError = false
 
-    private var monthlyPackage: Package? {
-        subscriptionService.availablePackages.first { $0.packageType == .monthly }
+    private func package(_ productId: String) -> Package? {
+        subscriptionService.availablePackages.first { $0.storeProduct.productIdentifier == productId }
     }
 
-    private var annualPackage: Package? {
-        subscriptionService.availablePackages.first { $0.packageType == .annual }
+    private var standardWeekly: Package? { package(Constants.Products.standardWeekly) }
+    private var standardYearly: Package? { package(Constants.Products.standardYearly) }
+    private var premiumWeekly: Package? { package(Constants.Products.premiumWeekly) }
+    private var premiumYearly: Package? { package(Constants.Products.premiumYearly) }
+
+    private var hasNamedPackages: Bool {
+        standardWeekly != nil || standardYearly != nil || premiumWeekly != nil || premiumYearly != nil
     }
 
     private var fallbackPackages: [Package] {
@@ -86,8 +91,8 @@ struct SubscriptionPaywallView: View {
     private var featureList: some View {
         VStack(alignment: .leading, spacing: 12) {
             featureRow("Unlimited text chat")
-            featureRow("60 voice minutes/week")
-            featureRow("Daily accountability")
+            featureRow("Daily & weekly voice coaching")
+            featureRow("Standard 65 / Premium 115 voice min/week")
             featureRow("All your data encrypted")
         }
         .padding()
@@ -108,21 +113,21 @@ struct SubscriptionPaywallView: View {
 
     @ViewBuilder
     private var packageButtons: some View {
-        VStack(spacing: 12) {
-            if let monthly = monthlyPackage {
-                purchaseButton(
-                    label: "Monthly — \(monthly.localizedPriceString)/month",
-                    package: monthly
+        VStack(spacing: 20) {
+            if hasNamedPackages {
+                tierSection(
+                    title: "Standard",
+                    subtitle: "1 daily check-in + weekly planning",
+                    weekly: standardWeekly,
+                    yearly: standardYearly
                 )
-            }
-            if let annual = annualPackage {
-                let savings = savingsLabel(monthly: monthlyPackage, annual: annual)
-                purchaseButton(
-                    label: "Annual — \(annual.localizedPriceString)/year\(savings)",
-                    package: annual
+                tierSection(
+                    title: "Premium",
+                    subtitle: "2 daily check-ins + weekly planning",
+                    weekly: premiumWeekly,
+                    yearly: premiumYearly
                 )
-            }
-            if monthlyPackage == nil && annualPackage == nil {
+            } else {
                 ForEach(fallbackPackages) { package in
                     purchaseButton(
                         label: "\(package.storeProduct.localizedTitle) — \(package.localizedPriceString)",
@@ -135,6 +140,30 @@ struct SubscriptionPaywallView: View {
                     .foregroundStyle(.secondary)
                     .font(.subheadline)
             }
+        }
+    }
+
+    @ViewBuilder
+    private func tierSection(title: String, subtitle: String, weekly: Package?, yearly: Package?) -> some View {
+        if weekly != nil || yearly != nil {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(title).font(.headline)
+                Text(subtitle).font(.caption).foregroundStyle(.secondary)
+                if let yearly {
+                    let savings = savingsLabel(weekly: weekly, yearly: yearly)
+                    purchaseButton(
+                        label: "Yearly — \(yearly.localizedPriceString)/year\(savings)",
+                        package: yearly
+                    )
+                }
+                if let weekly {
+                    purchaseButton(
+                        label: "Weekly — \(weekly.localizedPriceString)/week",
+                        package: weekly
+                    )
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -159,8 +188,8 @@ struct SubscriptionPaywallView: View {
         do {
             try await subscriptionService.purchase(package: package)
             isLoading = false
-            if subscriptionService.isPremium {
-                appState.isPremium = true
+            if subscriptionService.hasActivePlan {
+                appState.apply(tier: subscriptionService.tier)
                 withAnimation { showToast = true }
                 try? await Task.sleep(for: .seconds(1.5))
                 dismiss()
@@ -177,8 +206,8 @@ struct SubscriptionPaywallView: View {
         do {
             try await subscriptionService.restorePurchases()
             isLoading = false
-            if subscriptionService.isPremium {
-                appState.isPremium = true
+            if subscriptionService.hasActivePlan {
+                appState.apply(tier: subscriptionService.tier)
             }
             dismiss()
         } catch {
@@ -188,13 +217,14 @@ struct SubscriptionPaywallView: View {
         }
     }
 
-    private func savingsLabel(monthly: Package?, annual: Package) -> String {
-        guard let monthly else { return "" }
-        let monthlyPrice = monthly.storeProduct.price as Decimal
-        let annualPrice = annual.storeProduct.price as Decimal
-        let annualEquivalentMonthly = monthlyPrice * 12
-        guard annualEquivalentMonthly > 0 else { return "" }
-        let savings = (annualEquivalentMonthly - annualPrice) / annualEquivalentMonthly * 100
+    /// "save N%" comparing the yearly price against 52× the weekly price.
+    private func savingsLabel(weekly: Package?, yearly: Package) -> String {
+        guard let weekly else { return "" }
+        let weeklyPrice = weekly.storeProduct.price as Decimal
+        let yearlyPrice = yearly.storeProduct.price as Decimal
+        let yearlyFromWeekly = weeklyPrice * 52
+        guard yearlyFromWeekly > 0 else { return "" }
+        let savings = (yearlyFromWeekly - yearlyPrice) / yearlyFromWeekly * 100
         let savingsInt = Int(truncating: savings as NSDecimalNumber)
         guard savingsInt > 0 else { return "" }
         return " (save \(savingsInt)%)"

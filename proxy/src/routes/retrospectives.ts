@@ -36,7 +36,9 @@ router.get('/', async (req, res: Response) => {
       snapshot.docs.map((d) => decryptRetro(d.id, d.data() as RetroDoc)),
     );
     res.json(retros);
-  } catch {
+  } catch (err) {
+    // Most likely a missing Firestore composite index (userId + startDate).
+    console.error('[GET /retrospectives] failed:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

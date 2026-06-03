@@ -3,8 +3,10 @@ import SwiftUI
 struct HomeView: View {
     @Environment(AppState.self) var appState
     @Environment(SessionService.self) var sessionService
+    @Environment(SubscriptionService.self) var subscriptionService
     @State private var viewModel: HomeViewModel?
     @State private var showVoiceCall = false
+    @State private var showPaywall = false
     @State private var voiceCallService = VoiceCallService()
 
     private var isMorning: Bool { Calendar.current.component(.hour, from: Date()) < 12 }
@@ -51,6 +53,9 @@ struct HomeView: View {
                 )
             }
         }
+        .sheet(isPresented: $showPaywall) {
+            SubscriptionPaywallView(subscriptionService: subscriptionService)
+        }
     }
 
     // MARK: - Greeting
@@ -80,26 +85,14 @@ struct HomeView: View {
     // MARK: - Score Card
 
     private func scoreCard(vm: HomeViewModel) -> some View {
-        let scoreValue: Double?
-        let label: String
-
-        if let ts = vm.todayScore {
-            scoreValue = Double(ts)
-            label = "Today's score"
-        } else if let avg = vm.displayScore {
-            scoreValue = avg
-            label = "Avg score"
-        } else {
-            scoreValue = nil
-            label = "Avg score"
-        }
-
+        let scoreValue: Double? = vm.lastDayScore.map(Double.init)
+        let weekAvg: Double? = vm.weekAverageScore
         let scoreColor: Color = scoreValue.map { Color.lcScoreColor($0) } ?? Color.lcTextFaint
 
         return LCCard(padding: 0) {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(alignment: .firstTextBaseline) {
-                    LCSectionLabel(title: label).padding(0)
+                    LCSectionLabel(title: "Last day").padding(0)
                     Spacer()
                 }
                 .padding(.top, 22)
@@ -121,12 +114,12 @@ struct HomeView: View {
 
                     Spacer()
 
-                    if let stats = vm.userStats, let avg = stats.averageScore {
+                    if weekAvg != nil || vm.userStats != nil {
                         VStack(alignment: .trailing, spacing: 4) {
-                            Text(String(format: "%.1f avg", avg))
+                            Text(weekAvg.map { String(format: "%.1f wk avg", $0) } ?? "— wk avg")
                                 .font(.system(size: 13))
                                 .foregroundStyle(Color.lcTextDim)
-                            Text("\(stats.currentStreak) day streak")
+                            Text("\(vm.userStats?.currentStreak ?? 0) day streak")
                                 .font(.system(size: 13))
                                 .foregroundStyle(Color.lcTextDim)
                         }
@@ -169,6 +162,9 @@ struct HomeView: View {
         return LCCard(padding: 0) {
             Button {
                 guard !callDone else { return }
+                // Gate before presenting so non-subscribers see the paywall, never a
+                // dead "WAITING" call screen.
+                guard appState.hasActivePlan else { showPaywall = true; return }
                 voiceCallService = VoiceCallService()
                 showVoiceCall = true
             } label: {

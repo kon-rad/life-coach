@@ -1,8 +1,9 @@
 import { handleToolCall } from '../services/vapiTools';
+import { weekRange, upcomingWeekRange } from '../services/weeks';
 
 jest.mock('../services/firebase', () => ({
   db: { collection: jest.fn().mockReturnThis(), doc: jest.fn().mockReturnThis(),
-    where: jest.fn().mockReturnThis(), orderBy: jest.fn().mockReturnThis(),
+    where: jest.fn().mockReturnThis(), orderBy: jest.fn().mockReturnThis(), limit: jest.fn().mockReturnThis(),
     get: jest.fn(), set: jest.fn().mockResolvedValue(undefined), update: jest.fn().mockResolvedValue(undefined) },
 }));
 jest.mock('../services/encryption', () => ({
@@ -22,10 +23,31 @@ describe('handleToolCall', () => {
     expect(r).toMatch(/3 tasks/i);
   });
 
-  it('set_week_tasks writes the upcoming week', async () => {
+  it('set_day_tasks supports more than 3 tasks for a day', async () => {
     db.get.mockResolvedValue({ exists: false });
+    const r = await handleToolCall('user1', 'set_day_tasks',
+      { date: '2026-06-02', tasks: ['A', 'B', 'C', 'D', 'E'] });
+    const arg = db.set.mock.calls[0][0] as { tasks: string };
+    const tasks = JSON.parse(arg.tasks.replace(/^enc\(/, '').replace(/\)$/, '')) as unknown[];
+    expect(tasks).toHaveLength(5);
+    expect(r).toMatch(/5 tasks/i);
+  });
+
+  it('set_week_tasks writes the CURRENT week on the first session (no weeks exist yet)', async () => {
+    db.get.mockResolvedValue({ empty: true, docs: [] }); // weeks query: user has no weeks
     const r = await handleToolCall('user1', 'set_week_tasks', { tasks: ['X', 'Y', 'Z'] });
     expect(db.set).toHaveBeenCalled();
+    const arg = db.set.mock.calls[0][0] as { startDate: string };
+    expect(arg.startDate).toBe(weekRange(new Date()).startDate);
+    expect(r).toMatch(/this week/i);
+  });
+
+  it('set_week_tasks writes the UPCOMING week when the user already has weeks', async () => {
+    db.get.mockResolvedValue({ empty: false, docs: [{ id: 'user1_2026-W01' }] });
+    const r = await handleToolCall('user1', 'set_week_tasks', { tasks: ['X', 'Y', 'Z'] });
+    expect(db.set).toHaveBeenCalled();
+    const arg = db.set.mock.calls[0][0] as { startDate: string };
+    expect(arg.startDate).toBe(upcomingWeekRange(new Date()).startDate);
     expect(r).toMatch(/week/i);
   });
 

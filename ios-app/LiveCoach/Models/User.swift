@@ -20,9 +20,14 @@ struct User: Codable, Identifiable, Sendable {
     var occupation: String
     var motivation: String
     var createdAt: Date
-    var voiceMinutesUsedThisWeek: Int
+    /// Seconds of voice used in the current ISO week (server renamed from the old
+    /// misnamed `voiceMinutesUsedThisWeek`). Optional so decoding tolerates either field.
+    var voiceSecondsUsedThisWeek: Int?
     var weeklyVoiceQuotaSeconds: Int
     var totalVoiceSecondsUsed: Int
     var totalChatMessages: Int
     var notificationSettings: NotificationSettings
+    /// Server-authoritative subscription grant ("free" | "standard" | "premium"),
+    /// e.g. from a redeemed coupon. Optional so decoding tolerates older payloads.
+    var subscriptionStatus: String?
 }

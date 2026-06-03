@@ -2,10 +2,13 @@ import SwiftUI
 
 struct NewConversationSheet: View {
     let chatService: ChatService
+    let hasActivePlan: Bool
     @Binding var showSheet: Bool
     @Binding var selectedConversation: Conversation?
     @Binding var showVoiceCall: Bool
     @Binding var selectedCallType: CoachCallType
+    @Environment(SubscriptionService.self) private var subscriptionService
+    @State private var showPaywall = false
 
     var body: some View {
         NavigationStack {
@@ -16,6 +19,9 @@ struct NewConversationSheet: View {
                         title: callType.label,
                         subtitle: "Talk with your AI coach • uses voice minutes"
                     ) {
+                        // Gate before presenting so non-subscribers see the paywall,
+                        // never a dead "WAITING" call screen.
+                        guard hasActivePlan else { showPaywall = true; return }
                         selectedCallType = callType
                         showSheet = false
                         showVoiceCall = true
@@ -46,6 +52,9 @@ struct NewConversationSheet: View {
                         showSheet = false
                     }
                 }
+            }
+            .sheet(isPresented: $showPaywall) {
+                SubscriptionPaywallView(subscriptionService: subscriptionService)
             }
         }
     }

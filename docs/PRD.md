@@ -101,8 +101,9 @@ Bottom tab bar with four tabs:
   2. "Complete your micro-actions — small steps that add up"
   3. "Evening check-in (5 min) — reflect, score, and set up tomorrow"
 - Below: subscription paywall card
-  - Plan options: Monthly ($19.99/mo) | Annual ($149.99/yr — save 37%)
-  - Includes: "Unlimited chat · 60 voice minutes/week · Daily accountability"
+  - Plan options: Weekly (from $8.99/wk) | Yearly (from $299.99/yr — save ~36%)
+  - Tiers: Standard (1 daily + weekly planning · 65 voice min/week) / Premium (2 daily + weekly planning · 115 voice min/week)
+  - Includes: "Unlimited chat · daily & weekly voice coaching · weekly retrospective"
   - Free tier note: "Start free — 10 chat messages/day, no voice calls"
 - CTA: "Start coaching" / "Try free"
 
@@ -223,7 +224,7 @@ Reachable from the Calls tab list. Works for both voice transcripts and text cha
 2. **My Goal** — link to edit project (same as Project tab edit)
 
 3. **Subscription**
-   - Current plan: Free / Monthly / Annual
+   - Current plan: Free / Standard / Premium (Weekly or Yearly)
    - Voice minutes: "[N] / [60] minutes used this week"
    - "Upgrade plan" or "Manage subscription" (opens RevenueCat paywall)
    - "Buy voice minutes" — purchase additional credits
@@ -357,14 +358,17 @@ Each day consists of two structured voice calls:
 - Access to Home, Project, Calls (text only), Profile tabs
 - Paywall shown when voice is attempted or daily message limit reached
 
-**Premium Monthly — $19.99/mo:**
+**Standard — $8.99/week or $299.99/year (≈ $25/mo, save ~36%):**
 - Unlimited text chat
-- 60 voice minutes per week (VAPI)
-- Full feature access
+- 1 daily check-in + weekly planning call
+- 65 voice minutes per week (VAPI)
+- Weekly retrospective
 
-**Premium Annual — $149.99/yr:**
-- Everything in monthly
-- 2 months free
+**Premium — $14.99/week or $499.99/year (≈ $41.67/mo, save ~36%):**
+- Unlimited text chat
+- 2 daily check-ins + weekly planning call
+- 115 voice minutes per week (VAPI)
+- Weekly retrospective
 
 **Voice Credit Packs (one-time purchase):**
 - 30 minutes — $4.99

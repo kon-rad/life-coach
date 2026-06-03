@@ -11,7 +11,7 @@ enum DemoMode {
         occupation: "Product designer",
         motivation: "Build something that's truly mine and have the freedom to work on my own terms.",
         createdAt: Calendar.current.date(byAdding: .day, value: -42, to: Date()) ?? Date(),
-        voiceMinutesUsedThisWeek: 18,
+        voiceSecondsUsedThisWeek: 1080,
         weeklyVoiceQuotaSeconds: 3600,
         totalVoiceSecondsUsed: 5400,
         totalChatMessages: 87,

@@ -4,6 +4,7 @@ import FirebaseCore
 import GoogleSignIn
 import AuthenticationServices
 import CryptoKit
+import RevenueCat
 
 @MainActor
 @Observable final class AuthService: NSObject {
@@ -26,7 +27,18 @@ import CryptoKit
         guard FirebaseApp.app() != nil else { return }
         currentFirebaseUser = Auth.auth().currentUser
         Auth.auth().addStateDidChangeListener { [weak self] _, user in
-            Task { @MainActor in self?.currentFirebaseUser = user }
+            Task { @MainActor in
+                self?.currentFirebaseUser = user
+                // Align RevenueCat's app user with the Firebase UID so the proxy can
+                // grant promo (coupon) entitlements to the right account, and so the
+                // RevenueCat webhook updates the correct user doc.
+                guard Purchases.isConfigured else { return }
+                if let uid = user?.uid {
+                    Purchases.shared.logIn(uid) { _, _, _ in }
+                } else {
+                    Purchases.shared.logOut { _, _ in }
+                }
+            }
         }
     }
 

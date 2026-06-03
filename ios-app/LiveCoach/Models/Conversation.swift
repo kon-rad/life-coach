@@ -13,6 +13,25 @@ struct Message: Codable, Identifiable, Sendable {
 
 enum ConversationType: String, Codable, Sendable {
     case middayCall, eveningCall, weeklyCall, freeChat, freeVoice
+    /// Any type the server sends that this build doesn't know about (e.g. a legacy
+    /// `morningCall` doc, or a future call type). Decoding to this case instead of throwing
+    /// keeps one unknown row from failing the decode of the entire conversations list.
+    case unknown
+
+    init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        self = ConversationType(rawValue: raw) ?? .unknown
+    }
+}
+
+/// A coaching action taken during a voice call (set tasks, marked a task done, …),
+/// recorded server-side and shown in the conversation detail.
+struct CoachAction: Codable, Identifiable, Sendable {
+    let name: String
+    let detail: String
+    let timestamp: Date
+
+    var id: String { "\(timestamp.timeIntervalSince1970)-\(name)-\(detail)" }
 }
 
 enum CoachCallType: String, CaseIterable, Identifiable, Sendable {
@@ -40,6 +59,10 @@ struct Conversation: Codable, Identifiable, Sendable {
     var durationSeconds: Int?
     let createdAt: Date
     var summary: String?
+    /// VAPI-hosted recording URL for voice calls (detail endpoint only). Empty/nil when none.
+    var recordingUrl: String?
+    /// Coaching actions taken during the call (detail endpoint only).
+    var actions: [CoachAction]?
 
     /// Best available count: the list-provided total, else the loaded messages.
     var displayMessageCount: Int {

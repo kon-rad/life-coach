@@ -105,10 +105,11 @@ describe('GET /user/profile', () => {
       data: () => ({
         displayName: 'enc(Alice)',
         createdAt: '2026-01-01T00:00:00.000Z',
-        voiceMinutesUsedThisWeek: 120,
+        voiceSecondsUsedThisWeek: 120,
         weeklyVoiceQuotaSeconds: 3600,
         totalVoiceSecondsUsed: 500,
         totalChatMessages: 10,
+        subscriptionStatus: 'premium',
         notificationSettings: `enc(${JSON.stringify({
           morningReminderHour: 8,
           morningReminderMinute: 0,
@@ -126,8 +127,65 @@ describe('GET /user/profile', () => {
     expect(res.status).toBe(200);
     expect(res.body.displayName).toBe('Alice');
     expect(res.body.totalChatMessages).toBe(10);
-    expect(res.body.voiceMinutesUsedThisWeek).toBe(120);
+    expect(res.body.voiceSecondsUsedThisWeek).toBe(120);
     expect(res.body.notificationSettings.morningReminderHour).toBe(8);
+    expect(res.body.subscriptionStatus).toBe('premium');
+  });
+
+  it('backfills missing notificationSettings keys for users created before the fields existed', async () => {
+    // A user created before the weeklyPlanning*/timeZone/middayReminder* fields existed
+    // has a stored notificationSettings object holding only the old keys. The response
+    // must still be COMPLETE — otherwise the iOS client (which decodes every key as
+    // non-optional) fails to decode the entire profile ("The data couldn't be read").
+    db.get.mockResolvedValueOnce({
+      exists: true,
+      data: () => ({
+        displayName: 'enc(Carol)',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        weeklyVoiceQuotaSeconds: 3600,
+        notificationSettings: `enc(${JSON.stringify({
+          eveningReminderHour: 21,
+          eveningReminderMinute: 15,
+          streakReminders: false,
+        })})`,
+      }),
+    });
+
+    const res = await request(app)
+      .get('/user/profile')
+      .set('Authorization', `Bearer ${VALID_TOKEN}`);
+
+    expect(res.status).toBe(200);
+    const ns = res.body.notificationSettings;
+    // Stored values are preserved.
+    expect(ns.eveningReminderHour).toBe(21);
+    expect(ns.eveningReminderMinute).toBe(15);
+    expect(ns.streakReminders).toBe(false);
+    // Missing keys are backfilled with defaults — present and correctly typed.
+    expect(typeof ns.middayReminderHour).toBe('number');
+    expect(typeof ns.middayReminderMinute).toBe('number');
+    expect(typeof ns.weeklyPlanningWeekday).toBe('number');
+    expect(typeof ns.weeklyPlanningHour).toBe('number');
+    expect(typeof ns.weeklyPlanningMinute).toBe('number');
+    expect(typeof ns.timeZone).toBe('string');
+  });
+
+  it('defaults subscriptionStatus to "free" when the user has no grant', async () => {
+    db.get.mockResolvedValueOnce({
+      exists: true,
+      data: () => ({
+        displayName: 'enc(Bob)',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        weeklyVoiceQuotaSeconds: 3600,
+      }),
+    });
+
+    const res = await request(app)
+      .get('/user/profile')
+      .set('Authorization', `Bearer ${VALID_TOKEN}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.subscriptionStatus).toBe('free');
   });
 
   it('returns 404 when user doc does not exist', async () => {
@@ -138,6 +196,35 @@ describe('GET /user/profile', () => {
       .set('Authorization', `Bearer ${VALID_TOKEN}`);
 
     expect(res.status).toBe(404);
+  });
+
+  it('returns integer voice-second counts even when stored values are fractional', () => {
+    // VAPI reports fractional call durations, so accumulated usage can be stored as e.g.
+    // 377.57000000000005. The iOS client decodes voiceSecondsUsedThisWeek/totalVoiceSecondsUsed
+    // as `Int`; a fractional JSON number fails the WHOLE profile decode with
+    // "The data couldn't be read". The response must coerce these to whole seconds.
+    db.get.mockResolvedValueOnce({
+      exists: true,
+      data: () => ({
+        displayName: 'enc(Dave)',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        voiceSecondsUsedThisWeek: 377.57000000000005,
+        weeklyVoiceQuotaSeconds: 3600,
+        totalVoiceSecondsUsed: 377.57000000000005,
+        totalChatMessages: 0,
+      }),
+    });
+
+    return request(app)
+      .get('/user/profile')
+      .set('Authorization', `Bearer ${VALID_TOKEN}`)
+      .then((res) => {
+        expect(res.status).toBe(200);
+        expect(Number.isInteger(res.body.voiceSecondsUsedThisWeek)).toBe(true);
+        expect(Number.isInteger(res.body.totalVoiceSecondsUsed)).toBe(true);
+        expect(res.body.voiceSecondsUsedThisWeek).toBe(378);
+        expect(res.body.totalVoiceSecondsUsed).toBe(378);
+      });
   });
 });
 
@@ -361,11 +448,12 @@ describe('GET /user/stats — streak', () => {
     expect(res.body.averageScore).toBeNull();
   });
 
-  it('computes voiceMinutesRemainingThisWeek correctly', async () => {
+  it('returns voiceMinutesRemainingThisWeek in MINUTES, not seconds', async () => {
+    // 1200s used of a 3600s quota → 2400s remaining → 40 minutes
     db.get
       .mockResolvedValueOnce(makeSessionsSnapshot([]))
       .mockResolvedValueOnce(
-        makeUserSnapshot({ voiceMinutesUsedThisWeek: 1200, weeklyVoiceQuotaSeconds: 3600 }),
+        makeUserSnapshot({ voiceSecondsUsedThisWeek: 1200, weeklyVoiceQuotaSeconds: 3600 }),
       );
 
     const res = await request(app)
@@ -373,7 +461,43 @@ describe('GET /user/stats — streak', () => {
       .set('Authorization', `Bearer ${VALID_TOKEN}`);
 
     expect(res.status).toBe(200);
-    expect(res.body.voiceMinutesRemainingThisWeek).toBe(2400);
+    expect(res.body.voiceMinutesRemainingThisWeek).toBe(40);
+    expect(res.body.voiceSecondsUsedThisWeek).toBe(1200);
+  });
+
+  it('reports zero remaining (never negative) when over quota', async () => {
+    db.get
+      .mockResolvedValueOnce(makeSessionsSnapshot([]))
+      .mockResolvedValueOnce(
+        makeUserSnapshot({ voiceSecondsUsedThisWeek: 5000, weeklyVoiceQuotaSeconds: 3600 }),
+      );
+
+    const res = await request(app)
+      .get('/user/stats')
+      .set('Authorization', `Bearer ${VALID_TOKEN}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.voiceMinutesRemainingThisWeek).toBe(0);
+  });
+
+  it('treats usage from a previous week as 0 (self-healing weekly reset)', async () => {
+    db.get
+      .mockResolvedValueOnce(makeSessionsSnapshot([]))
+      .mockResolvedValueOnce(
+        makeUserSnapshot({
+          voiceSecondsUsedThisWeek: 3600,
+          usageWeekId: 'user1_2026-W01', // stale stamp
+          weeklyVoiceQuotaSeconds: 3600,
+        }),
+      );
+
+    const res = await request(app)
+      .get('/user/stats')
+      .set('Authorization', `Bearer ${VALID_TOKEN}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.voiceSecondsUsedThisWeek).toBe(0);
+    expect(res.body.voiceMinutesRemainingThisWeek).toBe(60);
   });
 });
 

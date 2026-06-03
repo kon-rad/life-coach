@@ -91,6 +91,34 @@ VAPI and RevenueCat must point at the public API:
 - VAPI assistant Server URL → `https://api.soularc.xyz/webhooks/vapi` (secret = `VAPI_WEBHOOK_SECRET`, sent as `x-vapi-secret`).
 - RevenueCat webhook → `https://api.soularc.xyz/webhooks/revenuecat` (Authorization = `REVENUECAT_WEBHOOK_SECRET`).
 
+## Landing page (soularc.xyz)
+
+Next.js app in `landing/`. Deployed on the **same DigitalOcean droplet** as the proxy.
+
+| Thing | Value |
+|-------|-------|
+| App dir | `/var/www/soularc-landing` |
+| PM2 app | `soularc-landing` (fork mode) |
+| Internal port | `3002` |
+| Public URL | `https://soularc.xyz` |
+| Waitlist DB | `/var/www/soularc-landing/data/waitlist.db` (better-sqlite3, **server-only** — never synced) |
+
+### Deploying
+
+From your machine:
+
+```bash
+cd landing
+./deploy.sh
+```
+
+`deploy.sh` rsyncs the source (excludes `node_modules`, `.next`, `data`, `.env`, logs),
+then on the server runs `npm ci && npm run build && pm2 reload ecosystem.config.js` and a
+homepage HTTP 200 check. Idempotent. **`data/` is excluded from rsync** so the live waitlist
+SQLite DB is never overwritten or deleted — do not remove that exclude.
+
+Local dev: `cd landing && npm install && npm run dev`. Build check: `npm run build`.
+
 ## iOS
 
 ```bash

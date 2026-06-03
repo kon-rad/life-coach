@@ -3,8 +3,9 @@ import Foundation
 enum Constants {
     static let proxyBaseURL = ProcessInfo.processInfo.environment["PROXY_BASE_URL"] ?? "https://api.soularc.xyz"
     /// When true, the app treats the user as premium and skips subscription gating.
-    /// Toggle via the `DEV_MODE=true` env var in the Xcode scheme. Off by default.
-    static let devMode = ProcessInfo.processInfo.environment["DEV_MODE"] == "true"
+    /// TEMPORARILY forced on for development — revert to
+    /// `ProcessInfo.processInfo.environment["DEV_MODE"] == "true"` before release.
+    static let devMode = true
     static let revenueCatAPIKey = "appl_xYEYFjQZulmgDcCyasbOYJDUsxO"
     static let vapiPublicKey = "c13b53b2-7dbd-477e-ba24-2b6d80d425d3"
     static let weeklyVoiceQuotaSeconds = 3600
@@ -12,6 +13,16 @@ enum Constants {
 
     enum Entitlements {
         static let premium = "premium"
+        static let standard = "standard"
+    }
+
+    /// App Store / RevenueCat product identifiers. Keep in sync with the proxy's
+    /// subscriptionTiers.ts and docs/pricing-plans-and-setup.md.
+    enum Products {
+        static let standardWeekly = "soularc_standard_weekly"
+        static let standardYearly = "soularc_standard_yearly"
+        static let premiumWeekly = "soularc_premium_weekly"
+        static let premiumYearly = "soularc_premium_yearly"
     }
 
     enum DailyQuotes {

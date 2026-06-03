@@ -35,7 +35,10 @@ router.get('/', async (req, res: Response) => {
       snapshot.docs.map((d) => decryptWeek(d.id, d.data() as WeekDoc)),
     );
     res.json(weeks);
-  } catch {
+  } catch (err) {
+    // Most likely a missing Firestore composite index (userId + startDate); without
+    // logging this returns a silent 500 and the Tasks view just shows empty.
+    console.error('[GET /weeks] failed:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

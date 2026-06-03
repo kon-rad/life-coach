@@ -65,3 +65,6 @@ secrets/
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+
+# Claude Code runtime lock
+.claude/scheduled_tasks.lock

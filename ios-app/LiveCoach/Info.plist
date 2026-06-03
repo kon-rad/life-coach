@@ -10,6 +10,8 @@
     <string>Soularc</string>
     <key>CFBundleIdentifier</key>
     <string>com.konradgnat.lifecoachai</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
     <key>CFBundleVersion</key>
     <string>1</string>
     <key>CFBundleShortVersionString</key>

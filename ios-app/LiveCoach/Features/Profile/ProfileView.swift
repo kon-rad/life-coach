@@ -8,6 +8,7 @@ struct ProfileView: View {
 
     @State private var showPaywall = false
     @State private var showVoiceCredits = false
+    @State private var showRedeemCode = false
     @State private var showDeleteConfirm1 = false
     @State private var showDeleteConfirm2 = false
     @State private var deleteConfirmText = ""
@@ -40,11 +41,18 @@ struct ProfileView: View {
         .task {
             try? await subscriptionService.fetchOfferings()
             try? await subscriptionService.fetchStatus()
-            appState.isPremium = Constants.devMode || subscriptionService.isPremium
+            if Constants.devMode { appState.isPremium = true; appState.hasActivePlan = true }
+            else { appState.apply(tier: subscriptionService.tier) }
         }
         .sheet(isPresented: $showPaywall) {
             SubscriptionPaywallView(subscriptionService: subscriptionService)
-                .onDisappear { appState.isPremium = Constants.devMode || subscriptionService.isPremium }
+                .onDisappear {
+                    if Constants.devMode { appState.isPremium = true; appState.hasActivePlan = true }
+                    else { appState.apply(tier: subscriptionService.tier) }
+                }
+        }
+        .sheet(isPresented: $showRedeemCode) {
+            RedeemCodeView()
         }
         .sheet(isPresented: $showVoiceCredits) {
             VoiceCreditsSheet(subscriptionService: subscriptionService)
@@ -142,6 +150,12 @@ struct ProfileView: View {
                     if let url = URL(string: "https://apps.apple.com/account/subscriptions") {
                         UIApplication.shared.open(url)
                     }
+                }
+
+                Color.lcHairline.frame(height: 0.5)
+
+                profileRow(label: "Redeem a code") {
+                    showRedeemCode = true
                 }
             }
         }
@@ -332,18 +346,20 @@ struct ProfileView: View {
     // MARK: - Helpers
 
     private var planBadge: String {
-        guard appState.isPremium else { return "Free" }
-        guard let info = subscriptionService.customerInfo,
-              let entitlement = info.entitlements[Constants.Entitlements.premium],
-              entitlement.isActive else { return "Premium" }
-        let pid = entitlement.productIdentifier.lowercased()
-        if pid.contains("annual") || pid.contains("year") { return "Annual" }
-        return "Trial"
+        guard appState.hasActivePlan else { return "Free" }
+        let tierName = appState.isPremium ? "Premium" : "Standard"
+        let pid = subscriptionService.customerInfo?
+            .entitlements.active.values.first?.productIdentifier.lowercased() ?? ""
+        let period = (pid.contains("year") || pid.contains("annual")) ? "Yearly"
+            : (pid.contains("week") ? "Weekly" : "")
+        return period.isEmpty ? tierName : "\(tierName) · \(period)"
     }
 
     private var subscriptionSubtitle: String {
-        guard appState.isPremium else { return "Upgrade to unlock voice calls and unlimited chat." }
-        return "You're on Soularc Plus · Renews monthly"
+        guard appState.hasActivePlan else { return "Upgrade to unlock voice calls and unlimited chat." }
+        return appState.isPremium
+            ? "You're on Soularc Premium · 2 daily check-ins + weekly planning"
+            : "You're on Soularc Standard · 1 daily check-in + weekly planning"
     }
 
     private func performDeleteAccount() async {

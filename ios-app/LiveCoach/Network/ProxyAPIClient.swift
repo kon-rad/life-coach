@@ -4,11 +4,7 @@ import FirebaseAuth
 final class ProxyAPIClient: Sendable {
     static let shared = ProxyAPIClient()
     private let baseURL: String = Constants.proxyBaseURL
-    private let decoder: JSONDecoder = {
-        let d = JSONDecoder()
-        d.dateDecodingStrategy = .iso8601
-        return d
-    }()
+    private let decoder: JSONDecoder = .proxy()
     private let encoder: JSONEncoder = {
         let e = JSONEncoder()
         e.dateEncodingStrategy = .iso8601
@@ -62,6 +58,15 @@ final class ProxyAPIClient: Sendable {
 
     func delete(_ path: String) async throws {
         _ = try await request(path, method: "DELETE")
+    }
+
+    /// DELETE that decodes the updated resource the server returns (e.g. the session
+    /// after removing one of its tasks). Disambiguated from the Void `delete` by the
+    /// expected return type at the call site.
+    func delete<T: Decodable>(_ path: String) async throws -> T {
+        let data = try await request(path, method: "DELETE")
+        do { return try decoder.decode(T.self, from: data) }
+        catch { throw APIError.decodingError(error) }
     }
 
     func stream(_ path: String, body: some Encodable) -> AsyncThrowingStream<String, Error> {

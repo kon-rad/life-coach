@@ -56,6 +56,7 @@ struct MainTabView: View {
                         }
                     }
                     .environment(sessionService)
+                    .environment(subscriptionService)
                 }
                 .preferredColorScheme(.dark)
             }
@@ -75,12 +76,13 @@ struct MainTabView: View {
             }
             if Constants.devMode {
                 appState.isPremium = true
+                appState.hasActivePlan = true
             } else {
-                do {
-                    try await subscriptionService.fetchStatus()
-                    appState.isPremium = subscriptionService.isPremium ||
-                        (appState.userStats?.voiceMinutesRemainingThisWeek ?? 0) > 0
-                } catch {}
+                // `tier` stays `.free` if the RevenueCat fetch fails; `apply` still folds
+                // in the server-authoritative grant, so a redeemed coupon unlocks access
+                // even when the on-device entitlement is missing. Always call `apply`.
+                try? await subscriptionService.fetchStatus()
+                appState.apply(tier: subscriptionService.tier)
             }
         }
     }

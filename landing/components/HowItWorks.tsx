@@ -4,23 +4,23 @@ import { PhoneMock, MockCall } from './PhoneMock';
 
 const steps = [
   {
-    num: '01', title: 'Weekly planning', time: 'Sunday · 5 min',
-    body: 'Each Sunday evening you retro the week and set your 3 tasks for the week ahead. Everything else ladders up to these.',
+    num: '01', title: 'Weekly planning call', time: 'Once a week · 5 min',
+    body: 'Open the week with a planning call and set your 3 goals for the week. Everything else ladders up to these.',
     icon: 'mic',
   },
   {
     num: '02', title: 'Midday check-in', time: 'Daily · 3 min',
-    body: 'A quick standup: progress, roadblocks, and a recommit to today’s 3 tasks.',
+    body: 'Say what you got done, what’s next, and any blockers. Your coach turns it into a checklist of 3 tasks for today — all aligned to the week.',
     icon: 'mic',
   },
   {
     num: '03', title: 'Evening debrief', time: 'Daily · 5 min',
-    body: 'Report what got done, then plan tomorrow’s 3 tasks — the path to this week’s goals.',
+    body: 'Report what you finished, check off your tasks, and plan tomorrow. Each day closes with a 0–10 score.',
     icon: 'check',
   },
   {
-    num: '04', title: 'Automatic retrospective', time: 'Every week',
-    body: 'At the end of each week you get a written report: what went well, what to improve, and one way to be 1% better.',
+    num: '04', title: 'Weekly retrospective', time: 'End of week',
+    body: 'A retro call reviews how the week went — what worked, what to improve — then rolls straight into planning next week’s 3 goals.',
     icon: 'score',
   },
 ];
@@ -64,7 +64,7 @@ export default function HowItWorks() {
             color: 'rgba(245,245,247,0.6)', margin: '0 auto',
             maxWidth: 560,
           }}>
-            A weekly planning call sets your 3 goals for the week. Two short daily standups keep you on track. An automatic retrospective closes the loop.
+            A weekly planning call sets your 3 goals for the week. Each day, your coach builds a 3-task checklist from your check-ins and scores how it went. A weekly retrospective closes the loop and plans the next.
           </p>
         </div>
 
@@ -133,7 +133,7 @@ export default function HowItWorks() {
               color: 'rgba(245,245,247,0.65)', margin: '0 0 12px',
               maxWidth: 460,
             }}>
-              Voice calls are the heart of Soularc. A weekly sprint-planning call on Sunday, a midday check-in to stay on track, and an evening debrief to close the day. No typing, no friction.
+              Voice calls are the heart of Soularc. A weekly planning call to set your goals, a midday check-in to stay on track, an evening debrief to close the day, and a retrospective to wrap the week. No typing, no friction.
             </p>
             <p style={{
               fontSize: 14, lineHeight: 1.55, letterSpacing: -0.1,

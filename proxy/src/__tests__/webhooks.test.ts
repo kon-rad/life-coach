@@ -1,5 +1,6 @@
 import request from 'supertest';
 import { app } from '../index';
+import { weekId } from '../services/weeks';
 
 const VAPI_SECRET = 'test-secret';
 const RC_SECRET = 'test-rc-secret';
@@ -48,10 +49,14 @@ jest.mock('../services/togetherAI', () => ({
     wentWell: 'Shipped API', improve: 'Start earlier',
     onePercent: 'Plan the night before', summary: 'Solid week',
   }),
+  scoreDay: jest.fn().mockResolvedValue({
+    score: 7, summary: 'Productive day', advice: 'Start the hardest task first tomorrow.',
+  }),
 }));
 
 jest.mock('../prompts', () => ({
   buildRetrospectivePrompt: jest.fn().mockReturnValue('retro prompt'),
+  buildDayScorePrompt: jest.fn().mockReturnValue('day score prompt'),
 }));
 
 const { db } = jest.requireMock('../services/firebase') as {
@@ -67,11 +72,15 @@ const { db } = jest.requireMock('../services/firebase') as {
   };
 };
 
-const { analyzeCall: mockAnalyzeCall, generateRetrospective: mockGenerateRetrospective } =
-  jest.requireMock('../services/togetherAI') as {
-    analyzeCall: jest.Mock;
-    generateRetrospective: jest.Mock;
-  };
+const {
+  analyzeCall: mockAnalyzeCall,
+  generateRetrospective: mockGenerateRetrospective,
+  scoreDay: mockScoreDay,
+} = jest.requireMock('../services/togetherAI') as {
+  analyzeCall: jest.Mock;
+  generateRetrospective: jest.Mock;
+  scoreDay: jest.Mock;
+};
 
 const { adminAuth } = jest.requireMock('../services/firebase') as {
   adminAuth: { verifyIdToken: jest.Mock };
@@ -96,6 +105,9 @@ beforeEach(() => {
   enc.encryptJSON.mockImplementation((o: unknown) => Promise.resolve(`enc(${JSON.stringify(o)})`));
   enc.decryptJSON.mockImplementation((c: string) => Promise.resolve(JSON.parse(c.replace(/^enc\(/, '').replace(/\)$/, ''))));
   mockAnalyzeCall.mockResolvedValue({ summary: 'Good call', score: 7, scoreRationale: 'Solid effort.' });
+  mockScoreDay.mockResolvedValue({
+    score: 7, summary: 'Productive day', advice: 'Start the hardest task first tomorrow.',
+  });
   mockGenerateRetrospective.mockResolvedValue({
     wentWell: 'Shipped API', improve: 'Start earlier',
     onePercent: 'Plan the night before', summary: 'Solid week',
@@ -137,7 +149,8 @@ describe('POST /webhooks/vapi — security', () => {
 
 describe('POST /webhooks/vapi — midday call', () => {
   it('acknowledges and updates conversation', async () => {
-    // midday branch skips session writes, goes straight to conversation update
+    // midday branch skips session writes; still accumulates voice usage then updates conversation
+    db.get.mockResolvedValue({ exists: true, data: () => ({}) });
     const res = await request(app)
       .post('/webhooks/vapi')
       .set('x-vapi-secret', VAPI_SECRET)
@@ -151,13 +164,14 @@ describe('POST /webhooks/vapi — midday call', () => {
 // ─── VAPI webhooks — evening call ────────────────────────────────────────────
 
 describe('POST /webhooks/vapi — evening call', () => {
-  it('updates today session with score', async () => {
+  it('updates today session with score and advice', async () => {
     const tasks = [{ id: 'a1', title: 'Do thing', isCompleted: false, completedAt: null }];
     db.get
       .mockResolvedValueOnce({
         exists: true,
         data: () => ({ userId: 'user1', date: '2026-05-19', tasks: `enc(${JSON.stringify(tasks)})` }),
       })
+      .mockResolvedValueOnce({ exists: false })   // current week doc (scoring context)
       .mockResolvedValueOnce({ exists: false })   // tomorrow session
       .mockResolvedValueOnce({ exists: false });   // user doc
 
@@ -172,6 +186,8 @@ describe('POST /webhooks/vapi — evening call', () => {
     );
     expect(scoreUpdate).toBeDefined();
     expect((scoreUpdate![0] as { score: number }).score).toBe(7);
+    // advice is persisted (encrypted) alongside the score
+    expect((scoreUpdate![0] as { advice?: string }).advice).toBe('enc(Start the hardest task first tomorrow.)');
   });
 
   it('sets up tomorrow session skeleton', async () => {
@@ -181,6 +197,7 @@ describe('POST /webhooks/vapi — evening call', () => {
         exists: true,
         data: () => ({ userId: 'user1', date: '2026-05-19', tasks: `enc(${JSON.stringify(tasks)})` }),
       })
+      .mockResolvedValueOnce({ exists: false })   // current week doc
       .mockResolvedValueOnce({ exists: false })   // tomorrow session
       .mockResolvedValueOnce({ exists: false });   // user doc
 
@@ -201,10 +218,11 @@ describe('POST /webhooks/vapi — evening call', () => {
         exists: true,
         data: () => ({ userId: 'user1', date: '2026-05-19', tasks: `enc(${JSON.stringify([])})` }),
       })
-      .mockResolvedValueOnce({ exists: false })
+      .mockResolvedValueOnce({ exists: false })   // current week doc
+      .mockResolvedValueOnce({ exists: false })   // tomorrow session
       .mockResolvedValueOnce({
         exists: true,
-        data: () => ({ totalVoiceSecondsUsed: 600, voiceMinutesUsedThisWeek: 300 }),
+        data: () => ({ totalVoiceSecondsUsed: 600, voiceSecondsUsedThisWeek: 300, usageWeekId: weekId('user1', new Date()) }),
       });
 
     await request(app)
@@ -217,6 +235,55 @@ describe('POST /webhooks/vapi — evening call', () => {
     );
     expect(userUpdate).toBeDefined();
     expect((userUpdate![0] as { totalVoiceSecondsUsed: number }).totalVoiceSecondsUsed).toBe(600 + 300);
+  });
+});
+
+// ─── VAPI webhooks — voice usage applies to ALL call types ───────────────────
+
+describe('POST /webhooks/vapi — voice usage accumulation', () => {
+  it.each(['midday', 'weekly', 'free'])(
+    'accumulates voice seconds for a %s call (not just evening)',
+    async (callType) => {
+      // generic doc mock: every get() returns a user-ish doc with prior usage
+      db.get.mockResolvedValue({
+        exists: true,
+        data: () => ({
+          totalVoiceSecondsUsed: 100,
+          voiceSecondsUsedThisWeek: 100,
+          usageWeekId: weekId('user1', new Date()),
+          tasks: `enc(${JSON.stringify([])})`,
+        }),
+      });
+
+      await request(app)
+        .post('/webhooks/vapi')
+        .set('x-vapi-secret', VAPI_SECRET)
+        .send(makeVapiBody(callType));
+
+      const usageUpdate = db.update.mock.calls.find(
+        (c) => (c[0] as { voiceSecondsUsedThisWeek?: number }).voiceSecondsUsedThisWeek !== undefined,
+      );
+      expect(usageUpdate).toBeDefined();
+      expect((usageUpdate![0] as { voiceSecondsUsedThisWeek: number }).voiceSecondsUsedThisWeek).toBe(100 + 300);
+    },
+  );
+
+  it('stamps the current usageWeekId when accumulating', async () => {
+    db.get.mockResolvedValue({
+      exists: true,
+      data: () => ({ tasks: `enc(${JSON.stringify([])})` }),
+    });
+
+    await request(app)
+      .post('/webhooks/vapi')
+      .set('x-vapi-secret', VAPI_SECRET)
+      .send(makeVapiBody('free'));
+
+    const usageUpdate = db.update.mock.calls.find(
+      (c) => (c[0] as { usageWeekId?: string }).usageWeekId !== undefined,
+    );
+    expect(usageUpdate).toBeDefined();
+    expect((usageUpdate![0] as { usageWeekId: string }).usageWeekId).toBe(weekId('user1', new Date()));
   });
 });
 
@@ -234,6 +301,20 @@ describe('POST /webhooks/vapi — weekly call', () => {
       .send(makeVapiBody('weekly'));
     expect(res.status).toBe(200);
     expect(db.set).toHaveBeenCalled();
+  });
+
+  it('does NOT retrospect a first-session weekly call (the week was just created)', async () => {
+    // Subsequent reads (user-usage doc) return non-existent so accumulation no-ops.
+    db.get.mockResolvedValue({ exists: false });
+    // First read in the weekly branch is the conversation doc carrying the flag.
+    db.get.mockResolvedValueOnce({ exists: true, data: () => ({ isFirstSession: true }) });
+    const res = await request(app)
+      .post('/webhooks/vapi')
+      .set('x-vapi-secret', VAPI_SECRET)
+      .send(makeVapiBody('weekly'));
+    expect(res.status).toBe(200);
+    // The just-planned current week must stay active — no retro, no 'complete'.
+    expect(mockGenerateRetrospective).not.toHaveBeenCalled();
   });
 });
 
@@ -274,12 +355,42 @@ describe('POST /webhooks/revenuecat — subscription events', () => {
     const res = await request(app)
       .post('/webhooks/revenuecat')
       .set('Authorization', `Bearer ${RC_SECRET}`)
-      .send({ event: { type: 'INITIAL_PURCHASE', app_user_id: 'user1' } });
+      .send({ event: { type: 'INITIAL_PURCHASE', app_user_id: 'user1', product_id: 'soularc_premium_yearly' } });
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ received: true });
     expect(db.set).toHaveBeenCalledTimes(1);
     const setData = db.set.mock.calls[0][0] as { subscriptionStatus: string };
     expect(setData.subscriptionStatus).toBe('premium');
+  });
+
+  it('sets standard tier + 3900s quota for a standard product', async () => {
+    await request(app)
+      .post('/webhooks/revenuecat')
+      .set('Authorization', `Bearer ${RC_SECRET}`)
+      .send({ event: { type: 'INITIAL_PURCHASE', app_user_id: 'user1', product_id: 'soularc_standard_weekly' } });
+    const setData = db.set.mock.calls[0][0] as { subscriptionStatus: string; weeklyVoiceQuotaSeconds: number };
+    expect(setData.subscriptionStatus).toBe('standard');
+    expect(setData.weeklyVoiceQuotaSeconds).toBe(3900);
+  });
+
+  it('sets premium tier + 6900s quota for a premium product', async () => {
+    await request(app)
+      .post('/webhooks/revenuecat')
+      .set('Authorization', `Bearer ${RC_SECRET}`)
+      .send({ event: { type: 'INITIAL_PURCHASE', app_user_id: 'user1', product_id: 'soularc_premium_weekly' } });
+    const setData = db.set.mock.calls[0][0] as { subscriptionStatus: string; weeklyVoiceQuotaSeconds: number };
+    expect(setData.subscriptionStatus).toBe('premium');
+    expect(setData.weeklyVoiceQuotaSeconds).toBe(6900);
+  });
+
+  it('zeroes the quota on EXPIRATION', async () => {
+    await request(app)
+      .post('/webhooks/revenuecat')
+      .set('Authorization', `Bearer ${RC_SECRET}`)
+      .send({ event: { type: 'EXPIRATION', app_user_id: 'user1' } });
+    const setData = db.set.mock.calls[0][0] as { subscriptionStatus: string; weeklyVoiceQuotaSeconds: number };
+    expect(setData.subscriptionStatus).toBe('free');
+    expect(setData.weeklyVoiceQuotaSeconds).toBe(0);
   });
 
   it('sets subscriptionStatus to premium on RENEWAL', async () => {

@@ -30,9 +30,9 @@ struct LiveCoachApp: App {
                     guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else { return }
                     guard !DemoMode.isEnabled else { return }
                     Purchases.shared.delegate = revenueCatDelegate
-                    revenueCatDelegate.onPremiumStatusChange = { [appState] isPremium in
+                    revenueCatDelegate.onTierChange = { [appState] tier in
                         Task { @MainActor in
-                            appState.isPremium = isPremium
+                            appState.apply(tier: tier)
                         }
                     }
                 }

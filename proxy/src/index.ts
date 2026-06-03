@@ -16,7 +16,10 @@ import userRouter from './routes/user';
 export const app = express();
 
 app.use(cors());
-app.use(express.json());
+// VAPI end-of-call-report payloads (full transcript + per-turn artifact messages) routinely
+// exceed Express's default 100kb JSON limit, which silently 413s the /webhooks/vapi POST
+// before the handler runs — so transcripts/summaries/recordings were never persisted.
+app.use(express.json({ limit: '10mb' }));
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });

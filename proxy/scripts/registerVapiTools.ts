@@ -29,10 +29,22 @@ async function main() {
     toolIds.push(created.id);
   }
 
+  // `model` is a provider-discriminated union — PATCHing it with ONLY `toolIds` drops the
+  // provider/model/messages and breaks the assistant (same failure class as the
+  // assistantOverrides.model 400). Fetch the current model and merge toolIds into it.
+  const getResp = await fetch(`${API}/assistant/${assistantId}`, {
+    headers: { Authorization: `Bearer ${key}` },
+  });
+  if (!getResp.ok) throw new Error(`Fetch assistant failed: ${getResp.status} ${await getResp.text()}`);
+  const assistant = (await getResp.json()) as { model?: Record<string, unknown> };
+  const model = { ...(assistant.model ?? {}), toolIds };
+
   const patch = await fetch(`${API}/assistant/${assistantId}`, {
     method: 'PATCH',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: { toolIds } }),
+    // Ensure call recording is on so the end-of-call-report carries artifact.recordingUrl,
+    // which the webhook persists for in-app playback. (VAPI defaults this on, but be explicit.)
+    body: JSON.stringify({ model, artifactPlan: { recordingEnabled: true } }),
   });
   if (!patch.ok) throw new Error(`Attach tools failed: ${patch.status} ${await patch.text()}`);
   console.log('Attached toolIds to assistant:', toolIds);

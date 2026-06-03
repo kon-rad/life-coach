@@ -80,6 +80,47 @@ Respond with valid JSON only, no markdown:
   }
 }
 
+export interface DayScore {
+  score: number;
+  summary: string;
+  advice: string;
+}
+
+/**
+ * Scores a single day from the evening check-in. Takes a prompt built by
+ * buildDayScorePrompt and returns { score (0-10), summary, advice }. Mirrors
+ * generateRetrospective: JSON-only, low temperature, safe fallback on parse error.
+ */
+export async function scoreDay(prompt: string): Promise<DayScore> {
+  const apiKey = process.env.TOGETHER_AI_API_KEY;
+  if (!apiKey) throw new Error('TOGETHER_AI_API_KEY is not set');
+
+  const response = await fetch('https://api.together.xyz/v1/chat/completions', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 500,
+      temperature: 0.2,
+    }),
+  });
+  if (!response.ok) throw new Error(`Together AI request failed: ${response.status}`);
+
+  const data = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> };
+  const raw = data.choices?.[0]?.message?.content?.trim() ?? '{}';
+  try {
+    const p = JSON.parse(raw) as Partial<DayScore>;
+    return {
+      score: typeof p.score === 'number' ? Math.min(10, Math.max(0, Math.round(p.score))) : 5,
+      summary: p.summary ?? '',
+      advice: p.advice ?? '',
+    };
+  } catch {
+    return { score: 5, summary: raw.slice(0, 300), advice: '' };
+  }
+}
+
 export async function complete(prompt: string): Promise<string> {
   const apiKey = process.env.TOGETHER_AI_API_KEY;
   if (!apiKey) throw new Error('TOGETHER_AI_API_KEY is not set');
