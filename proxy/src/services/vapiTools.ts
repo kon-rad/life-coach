@@ -72,7 +72,7 @@ async function toggleInDoc(
   return true;
 }
 
-async function completeTask(uid: string, taskId: string, isCompleted: boolean): Promise<string> {
+async function completeTask(uid: string, taskId: string, isCompleted: boolean): Promise<ToolCallResult> {
   // 1. current week
   const weekDocId = weekId(uid, new Date());
   const weekRef = db.collection('weeks').doc(weekDocId);
@@ -84,7 +84,7 @@ async function completeTask(uid: string, taskId: string, isCompleted: boolean): 
       taskId,
       isCompleted,
     );
-    if (matched) return `Marked the week task ${isCompleted ? 'complete' : 'not complete'}.`;
+    if (matched) return { result: `Marked the week task ${isCompleted ? 'complete' : 'not complete'}.` };
   }
   // 2. last 7 day sessions
   const from = (() => { const d = new Date(); d.setUTCDate(d.getUTCDate() - 6); return d.toISOString().slice(0, 10); })();
@@ -92,28 +92,44 @@ async function completeTask(uid: string, taskId: string, isCompleted: boolean): 
   const snap = await db.collection('sessions')
     .where('userId', '==', uid).where('date', '>=', from).where('date', '<=', to).get();
   for (const d of snap.docs) {
+    const data = d.data() as Record<string, unknown>;
     const matched = await toggleInDoc(
       d.ref as unknown as { update: (data: Record<string, unknown>) => Promise<void> },
-      d.data() as Record<string, unknown>,
+      data,
       taskId,
       isCompleted,
     );
-    if (matched) return `Marked the task ${isCompleted ? 'complete' : 'not complete'}.`;
+    if (matched) {
+      return {
+        result: `Marked the task ${isCompleted ? 'complete' : 'not complete'}.`,
+        touchedDate: typeof data.date === 'string' ? data.date : undefined,
+      };
+    }
   }
-  return 'Could not find that task.';
+  return { result: 'Could not find that task.' };
+}
+
+export interface ToolCallResult {
+  /** Spoken-back result for the voice agent. */
+  result: string;
+  /** YYYY-MM-DD of the session day whose tasks were modified, when one was (week-task
+   *  toggles don't set it). The tools webhook uses this to queue past days for rescoring. */
+  touchedDate?: string;
 }
 
 export async function handleToolCall(
   uid: string, name: string, args: Record<string, unknown>,
-): Promise<string> {
+): Promise<ToolCallResult> {
   switch (name) {
     case 'set_week_tasks':
-      return setWeekTasks(uid, (args.tasks as string[]) ?? []);
-    case 'set_day_tasks':
-      return setDayTasks(uid, String(args.date ?? new Date().toISOString().slice(0, 10)), (args.tasks as string[]) ?? []);
+      return { result: await setWeekTasks(uid, (args.tasks as string[]) ?? []) };
+    case 'set_day_tasks': {
+      const date = String(args.date ?? new Date().toISOString().slice(0, 10));
+      return { result: await setDayTasks(uid, date, (args.tasks as string[]) ?? []), touchedDate: date };
+    }
     case 'complete_task':
       return completeTask(uid, String(args.taskId ?? ''), Boolean(args.isCompleted));
     default:
-      return `Unknown tool: ${name}`;
+      return { result: `Unknown tool: ${name}` };
   }
 }

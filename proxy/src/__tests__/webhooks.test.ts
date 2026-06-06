@@ -52,11 +52,13 @@ jest.mock('../services/togetherAI', () => ({
   scoreDay: jest.fn().mockResolvedValue({
     score: 7, summary: 'Productive day', advice: 'Start the hardest task first tomorrow.',
   }),
+  rescoreDay: jest.fn().mockResolvedValue(8),
 }));
 
 jest.mock('../prompts', () => ({
   buildRetrospectivePrompt: jest.fn().mockReturnValue('retro prompt'),
   buildDayScorePrompt: jest.fn().mockReturnValue('day score prompt'),
+  buildRescorePrompt: jest.fn().mockReturnValue('rescore prompt'),
 }));
 
 const { db } = jest.requireMock('../services/firebase') as {
@@ -76,14 +78,22 @@ const {
   analyzeCall: mockAnalyzeCall,
   generateRetrospective: mockGenerateRetrospective,
   scoreDay: mockScoreDay,
+  rescoreDay: mockRescoreDay,
 } = jest.requireMock('../services/togetherAI') as {
   analyzeCall: jest.Mock;
   generateRetrospective: jest.Mock;
   scoreDay: jest.Mock;
+  rescoreDay: jest.Mock;
 };
 
 const { adminAuth } = jest.requireMock('../services/firebase') as {
   adminAuth: { verifyIdToken: jest.Mock };
+};
+
+const prompts = jest.requireMock('../prompts') as {
+  buildRetrospectivePrompt: jest.Mock;
+  buildDayScorePrompt: jest.Mock;
+  buildRescorePrompt: jest.Mock;
 };
 
 const enc = jest.requireMock('../services/encryption') as {
@@ -112,6 +122,10 @@ beforeEach(() => {
     wentWell: 'Shipped API', improve: 'Start earlier',
     onePercent: 'Plan the night before', summary: 'Solid week',
   });
+  mockRescoreDay.mockResolvedValue(8);
+  prompts.buildRetrospectivePrompt.mockReturnValue('retro prompt');
+  prompts.buildDayScorePrompt.mockReturnValue('day score prompt');
+  prompts.buildRescorePrompt.mockReturnValue('rescore prompt');
 });
 
 function makeVapiBody(callType: string, overrides: object = {}) {
@@ -315,6 +329,71 @@ describe('POST /webhooks/vapi — weekly call', () => {
     expect(res.status).toBe(200);
     // The just-planned current week must stay active — no retro, no 'complete'.
     expect(mockGenerateRetrospective).not.toHaveBeenCalled();
+  });
+});
+
+// ─── VAPI webhooks — past-day rescoring ──────────────────────────────────────
+
+describe('POST /webhooks/vapi — past-day rescoring', () => {
+  it('rescores a past day edited during the call, updating ONLY its score', async () => {
+    const tasks = [{ id: 't1', title: 'A', isCompleted: true, completedAt: null }];
+    db.get
+      .mockResolvedValueOnce({ exists: false }) // user usage doc (accumulateVoiceUsage no-ops)
+      .mockResolvedValueOnce({                  // conversation doc with the edited dates
+        exists: true,
+        data: () => ({ editedPastDates: ['2000-01-02'] }),
+      })
+      .mockResolvedValueOnce({                  // the past day's session — already scored
+        exists: true,
+        data: () => ({ score: 4, tasks: `enc(${JSON.stringify(tasks)})` }),
+      })
+      .mockResolvedValueOnce({ exists: false }); // that day's week doc
+
+    const res = await request(app)
+      .post('/webhooks/vapi')
+      .set('x-vapi-secret', VAPI_SECRET)
+      .send(makeVapiBody('free'));
+
+    expect(res.status).toBe(200);
+    expect(mockRescoreDay).toHaveBeenCalledWith('rescore prompt');
+    const scoreUpdate = db.update.mock.calls.find(
+      (c) => (c[0] as { score?: number }).score !== undefined,
+    );
+    expect(scoreUpdate).toBeDefined();
+    // Only the score is touched — summary/advice are deliberately preserved.
+    expect(scoreUpdate![0]).toEqual({ score: 8 });
+  });
+
+  it('does NOT rescore a never-scored day (scoring stays the evening call\'s job)', async () => {
+    db.get
+      .mockResolvedValueOnce({ exists: false }) // user usage doc
+      .mockResolvedValueOnce({
+        exists: true,
+        data: () => ({ editedPastDates: ['2000-01-02'] }),
+      })
+      .mockResolvedValueOnce({                  // session exists but has no score yet
+        exists: true,
+        data: () => ({ score: null, tasks: `enc(${JSON.stringify([])})` }),
+      });
+
+    const res = await request(app)
+      .post('/webhooks/vapi')
+      .set('x-vapi-secret', VAPI_SECRET)
+      .send(makeVapiBody('free'));
+
+    expect(res.status).toBe(200);
+    expect(mockRescoreDay).not.toHaveBeenCalled();
+  });
+
+  it('does not rescore when the conversation has no edited dates', async () => {
+    db.get.mockResolvedValue({ exists: true, data: () => ({}) });
+
+    await request(app)
+      .post('/webhooks/vapi')
+      .set('x-vapi-secret', VAPI_SECRET)
+      .send(makeVapiBody('free'));
+
+    expect(mockRescoreDay).not.toHaveBeenCalled();
   });
 });
 

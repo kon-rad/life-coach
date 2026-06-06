@@ -121,6 +121,34 @@ export async function scoreDay(prompt: string): Promise<DayScore> {
   }
 }
 
+/**
+ * Re-scores a past day after its tasks were corrected in a later call. Takes a
+ * prompt built by buildRescorePrompt and returns just the 0-10 score — the
+ * day's existing summary/advice are intentionally not regenerated.
+ */
+export async function rescoreDay(prompt: string): Promise<number> {
+  const apiKey = process.env.TOGETHER_AI_API_KEY;
+  if (!apiKey) throw new Error('TOGETHER_AI_API_KEY is not set');
+
+  const response = await fetch('https://api.together.xyz/v1/chat/completions', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 50,
+      temperature: 0.2,
+    }),
+  });
+  if (!response.ok) throw new Error(`Together AI request failed: ${response.status}`);
+
+  const data = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> };
+  const raw = data.choices?.[0]?.message?.content?.trim() ?? '{}';
+  const p = JSON.parse(raw) as { score?: number };
+  if (typeof p.score !== 'number') throw new Error('rescoreDay: no score in model response');
+  return Math.min(10, Math.max(0, Math.round(p.score)));
+}
+
 export async function complete(prompt: string): Promise<string> {
   const apiKey = process.env.TOGETHER_AI_API_KEY;
   if (!apiKey) throw new Error('TOGETHER_AI_API_KEY is not set');

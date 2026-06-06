@@ -24,16 +24,21 @@ jest.mock('../services/firebase', () => ({
 }));
 
 jest.mock('../services/vapiTools', () => ({
-  handleToolCall: jest.fn().mockResolvedValue('tool result'),
+  handleToolCall: jest.fn().mockResolvedValue({ result: 'tool result' }),
 }));
 
 const { handleToolCall: mockHandleToolCall } = jest.requireMock('../services/vapiTools') as {
   handleToolCall: jest.Mock;
 };
+const { db: mockDb } = jest.requireMock('../services/firebase') as { db: Record<string, jest.Mock> };
 
 beforeEach(() => {
   jest.clearAllMocks();
-  mockHandleToolCall.mockResolvedValue('tool result');
+  mockHandleToolCall.mockResolvedValue({ result: 'tool result' });
+  mockDb.collection.mockReturnThis();
+  mockDb.doc.mockReturnThis();
+  mockDb.get.mockResolvedValue({ exists: false });
+  mockDb.set.mockResolvedValue(undefined);
 });
 
 function makeToolsBody(toolCallList: Array<{ id: string; function: { name: string; arguments: unknown } }>) {
@@ -79,8 +84,8 @@ describe('POST /webhooks/vapi/tools — valid tool-calls message', () => {
 
   it('handles multiple tool calls in one request', async () => {
     mockHandleToolCall
-      .mockResolvedValueOnce('result A')
-      .mockResolvedValueOnce('result B');
+      .mockResolvedValueOnce({ result: 'result A' })
+      .mockResolvedValueOnce({ result: 'result B' });
 
     const res = await request(app)
       .post('/webhooks/vapi/tools')
@@ -94,6 +99,46 @@ describe('POST /webhooks/vapi/tools — valid tool-calls message', () => {
     expect(res.body.results).toHaveLength(2);
     expect(res.body.results[0]).toEqual({ toolCallId: 'tc1', result: 'result A' });
     expect(res.body.results[1]).toEqual({ toolCallId: 'tc2', result: 'result B' });
+  });
+
+  it('records edited PAST dates on the conversation for end-of-call rescoring', async () => {
+    mockHandleToolCall.mockResolvedValue({ result: 'done', touchedDate: '2000-01-01' });
+    const res = await request(app)
+      .post('/webhooks/vapi/tools')
+      .set('x-vapi-secret', VAPI_SECRET)
+      .send({
+        message: {
+          type: 'tool-calls',
+          call: { metadata: { userId: 'user1', conversationId: 'conv1' } },
+          toolCallList: [{ id: 'tc1', function: { name: 'set_day_tasks', arguments: { date: '2000-01-01', tasks: ['A'] } } }],
+        },
+      });
+    expect(res.status).toBe(200);
+    // editedPastDates merged onto the conversation doc (arrayUnion sentinel).
+    const setCall = mockDb.set.mock.calls.find(
+      (c) => (c[0] as { editedPastDates?: unknown }).editedPastDates !== undefined,
+    );
+    expect(setCall).toBeDefined();
+    expect(setCall![1]).toEqual({ merge: true });
+  });
+
+  it('does NOT record a touched date that is today or in the future', async () => {
+    const future = '2999-01-01';
+    mockHandleToolCall.mockResolvedValue({ result: 'done', touchedDate: future });
+    await request(app)
+      .post('/webhooks/vapi/tools')
+      .set('x-vapi-secret', VAPI_SECRET)
+      .send({
+        message: {
+          type: 'tool-calls',
+          call: { metadata: { userId: 'user1', conversationId: 'conv1' } },
+          toolCallList: [{ id: 'tc1', function: { name: 'set_day_tasks', arguments: { date: future, tasks: ['A'] } } }],
+        },
+      });
+    const setCall = mockDb.set.mock.calls.find(
+      (c) => (c[0] as { editedPastDates?: unknown }).editedPastDates !== undefined,
+    );
+    expect(setCall).toBeUndefined();
   });
 
   it('acknowledges non-tool-calls message types silently', async () => {

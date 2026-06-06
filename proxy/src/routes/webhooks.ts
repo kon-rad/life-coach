@@ -1,11 +1,12 @@
 import { Router, Request, Response } from 'express';
+import * as admin from 'firebase-admin';
 import { db } from '../services/firebase';
 import { encrypt, encryptJSON, decryptJSON } from '../services/encryption';
-import { analyzeCall, generateRetrospective, scoreDay } from '../services/togetherAI';
+import { analyzeCall, generateRetrospective, scoreDay, rescoreDay } from '../services/togetherAI';
 import { buildMessagesFromCall, VapiArtifactMessage } from '../services/vapiTranscript';
 import { handleToolCall } from '../services/vapiTools';
 import { weekId, weekRange, weekIdForDate } from '../services/weeks';
-import { buildRetrospectivePrompt, buildDayScorePrompt, PromptTask } from '../prompts';
+import { buildRetrospectivePrompt, buildDayScorePrompt, buildRescorePrompt, PromptTask } from '../prompts';
 import { accumulatedUsageUpdate, VoiceUsageDoc } from '../services/voiceUsage';
 import { tierForProduct, quotaSecondsForProduct, FREE_QUOTA_SECONDS } from '../services/subscriptionTiers';
 
@@ -95,6 +96,40 @@ async function tasksFromDoc(enc: string | null | undefined): Promise<PromptTask[
     return tasks.map((t) => ({ id: t.id, title: t.title, isCompleted: t.isCompleted }));
   } catch {
     return [];
+  }
+}
+
+/**
+ * Re-score past days whose tasks the coach edited during this call. The tools
+ * webhook stamped the edited dates onto the conversation as `editedPastDates`;
+ * each one that ALREADY has a score gets a fresh score from the corrected task
+ * state (summary/advice are deliberately kept). Never-scored days stay unscored —
+ * scoring is the evening call's job. Per-day failures are logged and skipped.
+ */
+async function rescoreEditedPastDays(userId: string, conversationId: string): Promise<void> {
+  const convSnap = await db.collection('conversations').doc(conversationId).get();
+  if (!convSnap.exists) return;
+  const dates = (convSnap.data() as { editedPastDates?: string[] }).editedPastDates ?? [];
+  const today = todayDateString();
+  for (const date of new Set(dates)) {
+    if (typeof date !== 'string' || !date || date >= today) continue;
+    try {
+      const sessionRef = db.collection('sessions').doc(`${userId}_${date}`);
+      const sessionSnap = await sessionRef.get();
+      if (!sessionSnap.exists) continue;
+      const session = sessionSnap.data() as SessionDoc;
+      if (session.score === null || session.score === undefined) continue;
+
+      const dayTasks = await tasksFromDoc(session.tasks);
+      const weekSnap = await db.collection('weeks').doc(weekIdForDate(userId, date)).get();
+      const weekTasks = weekSnap.exists
+        ? await tasksFromDoc((weekSnap.data() as { tasks?: string }).tasks)
+        : [];
+      const score = await rescoreDay(buildRescorePrompt({ date, weekTasks, dayTasks }));
+      await sessionRef.update({ score });
+    } catch (e) {
+      console.error(`rescore failed for ${userId} ${date}:`, e);
+    }
   }
 }
 
@@ -268,6 +303,13 @@ router.post('/vapi', async (req: Request, res: Response) => {
     // Voice usage is metered for EVERY call type (midday/evening/weekly/free).
     await accumulateVoiceUsage(userId, durationSeconds ?? 0);
 
+    // If the coach corrected any past day's tasks during this call, rescore those
+    // days now (all call types). Best-effort — never fail the webhook on it.
+    if (conversationId) {
+      try { await rescoreEditedPastDays(userId, conversationId); }
+      catch (e) { console.error('rescore edited past days failed', e); }
+    }
+
     // Update conversation record with summary (non-weekly only)
     if (conversationId) {
       let summary = '';
@@ -352,13 +394,18 @@ router.post('/vapi/tools', async (req: Request, res: Response) => {
 
   const calls = message.toolCallList ?? [];
   const performed: CoachAction[] = [];
+  const editedPastDates = new Set<string>();
+  const today = todayDateString();
   const results = await Promise.all(calls.map(async (c) => {
     const name = c.function?.name ?? c.name ?? '';
     const rawArgs = c.function?.arguments ?? c.arguments ?? {};
     const args = (typeof rawArgs === 'string' ? JSON.parse(rawArgs) : rawArgs) as Record<string, unknown>;
     let result: string;
     try {
-      result = await handleToolCall(uid, name, args);
+      const call = await handleToolCall(uid, name, args);
+      result = call.result;
+      // A tool edited a PAST day's session — queue it for rescoring at end of call.
+      if (call.touchedDate && call.touchedDate < today) editedPastDates.add(call.touchedDate);
       performed.push({ name, detail: describeToolCall(name, args), timestamp: new Date().toISOString() });
     }
     catch (e) { console.error('tool call error', e); result = 'There was an error saving that.'; }
@@ -370,6 +417,16 @@ router.post('/vapi/tools', async (req: Request, res: Response) => {
   if (conversationId) {
     try { await appendConversationActions(conversationId, performed); }
     catch (e) { console.error('append conversation actions failed', e); }
+    // Plain-date metadata (like `score`) — the end-of-call webhook reads this back
+    // to rescore the edited days once the call is over.
+    if (editedPastDates.size) {
+      try {
+        await db.collection('conversations').doc(conversationId).set(
+          { editedPastDates: admin.firestore.FieldValue.arrayUnion(...editedPastDates) },
+          { merge: true },
+        );
+      } catch (e) { console.error('record edited past dates failed', e); }
+    }
   }
 
   res.json({ results });

@@ -111,6 +111,17 @@ const VOICE_RULES =
   'phrases like "Absolutely!" or "Great question!". Today\'s date and time are available ' +
   'to you as {{now}} — use them to reason about dates.';
 
+/**
+ * Shared rule injected into every call prompt: the coach may correct past days
+ * (last 7 days). The end-of-call webhook automatically rescores any past day
+ * whose tasks were edited during the call.
+ */
+const PAST_DAY_RULES =
+  'If the user says they actually completed (or missed) something on a PREVIOUS day, ' +
+  'update that day: use complete_task with the task id, or set_day_tasks with that ' +
+  "day's date (YYYY-MM-DD, within the last 7 days) to rewrite its task list. The day's " +
+  'score is recalculated automatically after this call — no need to mention the score math.';
+
 // ---------------------------------------------------------------------------
 // Call prompts
 // ---------------------------------------------------------------------------
@@ -128,6 +139,7 @@ export function buildMiddayPrompt(ctx: CallPromptContext): string {
     `2. Go through today's 3 tasks — what's done, what's in progress, any roadblocks or questions.\n` +
     `3. If a task is complete or no longer complete, call the complete_task tool with its id and the correct isCompleted value.\n` +
     `4. Help them unblock and recommit to finishing today's 3 tasks. Connect them to this week's tasks.\n\n` +
+    `${PAST_DAY_RULES}\n\n` +
     VOICE_RULES
   );
 }
@@ -146,6 +158,7 @@ export function buildEveningPrompt(ctx: CallPromptContext): string {
     `3. Celebrate wins, acknowledge misses without judgment.\n` +
     `4. Propose and agree on the tasks for TOMORROW that move this week's tasks forward (as many as makes sense), then call set_day_tasks with tomorrow's date (YYYY-MM-DD) and the task titles.\n` +
     `5. Confirm tomorrow's tasks aloud before ending.\n\n` +
+    `${PAST_DAY_RULES}\n\n` +
     VOICE_RULES
   );
 }
@@ -183,6 +196,7 @@ export function buildWeeklyPrompt(ctx: CallPromptContext): string {
     `4. Call set_week_tasks with the 3 task titles.\n` +
     `5. Confirm the 3 new weekly tasks aloud before ending.\n\n` +
     `(A written retrospective report is generated automatically after this call — you do not need to dictate it.)\n\n` +
+    `${PAST_DAY_RULES}\n\n` +
     VOICE_RULES
   );
 }
@@ -196,7 +210,8 @@ export function buildFreePrompt(ctx: CallPromptContext): string {
     `Today's 3 tasks are:\n${formatTasks(ctx.todayTasks)}\n\n` +
     `Recent history (last 7 days):\n${ctx.recentHistory}\n\n` +
     `This is an open conversation — follow the user's lead. Focus on action and accountability. ` +
-    `You may use complete_task if they report finishing or undoing a task, but do not set new week or day tasks here.\n\n` +
+    `You may use complete_task if they report finishing or undoing a task, but do not plan new week or day tasks here (correcting a past day, per below, is fine).\n\n` +
+    `${PAST_DAY_RULES}\n\n` +
     VOICE_RULES
   );
 }
@@ -261,6 +276,41 @@ export function buildDayScorePrompt(ctx: DayScoreContext): string {
 }
 
 // ---------------------------------------------------------------------------
+// Day rescoring (Together AI, end-of-call webhook, after the coach edited a
+// past day's tasks during a call)
+// ---------------------------------------------------------------------------
+
+export interface RescoreContext {
+  /** The edited day's date (YYYY-MM-DD), for context only. */
+  date: string;
+  /** The 3 tasks of the week containing that day (with completion). */
+  weekTasks: PromptTask[];
+  /** The edited day's tasks (with their corrected completion state). */
+  dayTasks: PromptTask[];
+}
+
+/**
+ * Builds the prompt that re-scores a past day after its task list was corrected
+ * in a later coaching call. Unlike buildDayScorePrompt there is no fresh
+ * transcript — the score is recomputed from the corrected task state alone, and
+ * the day's existing summary/advice are deliberately left untouched.
+ * The model MUST return strict JSON: { "score": <int 0-10> }
+ */
+export function buildRescorePrompt(ctx: RescoreContext): string {
+  return (
+    `You are a life coach re-scoring a past day (${ctx.date}) after the user corrected ` +
+    `its task list in a later coaching call.\n\n` +
+    `That week's 3 tasks:\n${formatTasks(ctx.weekTasks)}\n\n` +
+    `The day's tasks with their CORRECTED completion state:\n${formatTasks(ctx.dayTasks)}\n\n` +
+    `Score the day from 0 to 10 based on how much of the day's tasks got done and how ` +
+    `they contribute to the week's tasks. With no transcript available, weigh completion ` +
+    `heavily but leave room for partial credit (e.g. most tasks done is a strong day).\n\n` +
+    `Return ONLY a JSON object with this exact key and no other text:\n` +
+    `{ "score": <integer from 0 to 10> }`
+  );
+}
+
+// ---------------------------------------------------------------------------
 // VAPI tool definitions (register once via POST https://api.vapi.ai/tool,
 // attach to the assistant via toolIds). All point at /webhooks/vapi/tools.
 // ---------------------------------------------------------------------------
@@ -294,7 +344,9 @@ export const TOOL_DEFINITIONS = [
       name: 'set_day_tasks',
       description:
         "Set the tasks for a specific day (any number — as many as you and the user agree on). " +
-        "In the evening debrief, set TOMORROW's tasks. Overwrites any existing tasks for that date.",
+        "In the evening debrief, set TOMORROW's tasks. May also target a PAST date within the " +
+        "last 7 days to correct that day's task list (its score is then recalculated " +
+        'automatically). Overwrites any existing tasks for that date.',
       parameters: {
         type: 'object',
         properties: {
@@ -319,6 +371,8 @@ export const TOOL_DEFINITIONS = [
       name: 'complete_task',
       description:
         'Mark a week task or day task as completed or not completed, by its id. ' +
+        'Works on tasks from the current week and any day in the last 7 days, so it can ' +
+        "correct a previous day (that day's score is then recalculated automatically). " +
         'Use the ids provided in your system prompt.',
       parameters: {
         type: 'object',
