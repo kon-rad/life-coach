@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 63;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -99,7 +99,7 @@
 		2DE7FE3BEC18CA693E73614C /* DailySession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailySession.swift; sourceTree = "<group>"; };
 		38E5D4B9514EAC3089AD1A71 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		3E5276279EC51A8D67832607 /* DayDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DayDetailView.swift; sourceTree = "<group>"; };
-		3E65E7783076EADD9ABE8F94 /* LiveCoach.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LiveCoach.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		3E65E7783076EADD9ABE8F94 /* Soularc.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Soularc.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		42254A692EF39B282719C174 /* Retrospective.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Retrospective.swift; sourceTree = "<group>"; };
 		431611131759DF1ED22A2D6A /* RetrospectiveListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RetrospectiveListView.swift; sourceTree = "<group>"; };
 		443F9DBD44C7CAFBA5EC857B /* APIError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIError.swift; sourceTree = "<group>"; };
@@ -110,6 +110,7 @@
 		4E28B51B99C7D3900406A190 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		5273F765E19D6CC5EDDBBDB8 /* ErrorBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorBanner.swift; sourceTree = "<group>"; };
 		5632F7E7F9A0D82EC380A981 /* LiveCoach.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LiveCoach.entitlements; sourceTree = "<group>"; };
+		59A38D25C2E68DA98A881729 /* vapi-sdk */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "vapi-sdk"; path = "Vendor/vapi-sdk"; sourceTree = SOURCE_ROOT; };
 		5A9A8AB598251EDB6CD11997 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		5E4424D2E1C91B40F94E0124 /* AppStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStateTests.swift; sourceTree = "<group>"; };
 		5F11576F9BFD37992C37DACF /* VoiceCallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceCallView.swift; sourceTree = "<group>"; };
@@ -263,7 +264,7 @@
 		8ACA08F608764D07812D3FFE /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				3E65E7783076EADD9ABE8F94 /* LiveCoach.app */,
+				3E65E7783076EADD9ABE8F94 /* Soularc.app */,
 				EE71A4B5B8E4B35373E60D0F /* LiveCoachTests.xctest */,
 			);
 			name = Products;
@@ -324,11 +325,20 @@
 			path = Components;
 			sourceTree = "<group>";
 		};
+		BAD5D20D3DA848D897D26200 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				59A38D25C2E68DA98A881729 /* vapi-sdk */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
 		C2FEF76CBA37D9D7BF7F0C87 = {
 			isa = PBXGroup;
 			children = (
 				DD6A48781D0CFD15A8E7EA09 /* LiveCoach */,
 				6FAFA32EFBBE5E19E6440131 /* LiveCoachTests */,
+				BAD5D20D3DA848D897D26200 /* Packages */,
 				9EE4F9D34ACE3E9158B8CBED /* Frameworks */,
 				8ACA08F608764D07812D3FFE /* Products */,
 			);
@@ -415,7 +425,7 @@
 				D00F3F473972586C096A649C /* Vapi */,
 			);
 			productName = LiveCoach;
-			productReference = 3E65E7783076EADD9ABE8F94 /* LiveCoach.app */;
+			productReference = 3E65E7783076EADD9ABE8F94 /* Soularc.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -432,7 +442,6 @@
 						ProvisioningStyle = Automatic;
 					};
 					F570D71EB4D2A9200E29C783 = {
-						DevelopmentTeam = DHB5JNF8ZW;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -451,9 +460,8 @@
 				0680B6C11A85E96A27BABD23 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				A5AE9A39C03157CD4500C0BF /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 				A891789E8E636BF4E974F899 /* XCRemoteSwiftPackageReference "purchases-ios" */,
-				9D098E32D7883B10A604C89B /* XCRemoteSwiftPackageReference "ios" */,
+				C023E82987116D597F0535B0 /* XCLocalSwiftPackageReference "Vendor/vapi-sdk" */,
 			);
-			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -731,6 +739,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = LiveCoach/LiveCoach.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = GA978N825M;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = LiveCoach/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -753,6 +762,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = LiveCoach/LiveCoach.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = GA978N825M;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = LiveCoach/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -800,6 +810,13 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		C023E82987116D597F0535B0 /* XCLocalSwiftPackageReference "Vendor/vapi-sdk" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "Vendor/vapi-sdk";
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCRemoteSwiftPackageReference section */
 		0680B6C11A85E96A27BABD23 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
@@ -807,14 +824,6 @@
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 10.0.0;
-			};
-		};
-		9D098E32D7883B10A604C89B /* XCRemoteSwiftPackageReference "ios" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/VapiAI/ios";
-			requirement = {
-				branch = main;
-				kind = branch;
 			};
 		};
 		A5AE9A39C03157CD4500C0BF /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
@@ -858,7 +867,6 @@
 		};
 		D00F3F473972586C096A649C /* Vapi */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 9D098E32D7883B10A604C89B /* XCRemoteSwiftPackageReference "ios" */;
 			productName = Vapi;
 		};
 /* End XCSwiftPackageProductDependency section */

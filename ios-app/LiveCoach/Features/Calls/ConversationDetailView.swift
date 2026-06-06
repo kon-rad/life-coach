@@ -274,7 +274,18 @@ private struct RecordingPlayerView: View {
         .padding(14)
         .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 14))
         .onReceive(ticker) { _ in tick() }
-        .onDisappear { player?.pause() }
+        .onDisappear {
+            player?.pause()
+            releaseAudioSession()
+        }
+    }
+
+    /// Release the shared audio session once playback stops. `.playback` is an
+    /// output-only category — leaving it active starves a later voice call's WebRTC
+    /// engine of mic input (VAPI then kills the call with
+    /// "assistant-did-not-receive-customer-audio").
+    private func releaseAudioSession() {
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 
     private func toggle() {
@@ -282,6 +293,7 @@ private struct RecordingPlayerView: View {
         if isPlaying {
             p.pause()
             isPlaying = false
+            releaseAudioSession()
         } else {
             try? AVAudioSession.sharedInstance().setCategory(.playback)
             try? AVAudioSession.sharedInstance().setActive(true)

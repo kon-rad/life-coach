@@ -1,5 +1,4 @@
 {
-  "originHash" : "09bece4cac4d1790c9a288ae2367849894865d1974b37b23fb57d1443776a283",
   "pins" : [
     {
       "identity" : "abseil-cpp-binary",
@@ -119,15 +118,6 @@
       }
     },
     {
-      "identity" : "ios",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/VapiAI/ios",
-      "state" : {
-        "branch" : "main",
-        "revision" : "5fdb73d8a4475bc1d97d351e31426f3682f4663e"
-      }
-    },
-    {
       "identity" : "leveldb",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/firebase/leveldb.git",
@@ -173,5 +163,5 @@
       }
     }
   ],
-  "version" : 3
+  "version" : 2
 }

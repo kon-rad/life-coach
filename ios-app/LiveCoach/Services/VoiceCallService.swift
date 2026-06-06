@@ -1,7 +1,30 @@
 import AVFoundation
 import Combine
 import Foundation
+import os
 import Vapi
+
+/// os_log mirror of the [VoiceCall] breadcrumbs so they're visible in the device's
+/// unified log (print() output is only visible under a debugger). Used to diagnose
+/// VAPI "assistant-did-not-receive-customer-audio" call failures in the field.
+private let voiceLog = Logger(subsystem: "com.konradgnat.lifecoachai", category: "VoiceCall")
+
+/// One-line snapshot of everything that decides whether the WebRTC call can hear the mic.
+@MainActor private func audioSessionSnapshot(_ label: String) {
+    let s = AVAudioSession.sharedInstance()
+    let inputs = s.currentRoute.inputs.map { "\($0.portType.rawValue):\($0.portName)" }.joined(separator: ",")
+    let outputs = s.currentRoute.outputs.map { $0.portType.rawValue }.joined(separator: ",")
+    let available = (s.availableInputs ?? []).map { $0.portType.rawValue }.joined(separator: ",")
+    voiceLog.error("""
+    [\(label, privacy: .public)] category=\(s.category.rawValue, privacy: .public) \
+    mode=\(s.mode.rawValue, privacy: .public) \
+    recordPermission=\(String(describing: AVAudioApplication.shared.recordPermission), privacy: .public) \
+    inputAvailable=\(s.isInputAvailable) routeInputs=[\(inputs, privacy: .public)] \
+    routeOutputs=[\(outputs, privacy: .public)] availableInputs=[\(available, privacy: .public)] \
+    otherAudioPlaying=\(s.isOtherAudioPlaying) sampleRate=\(s.sampleRate) \
+    inputChannels=\(s.inputNumberOfChannels)
+    """)
+}
 
 enum VoiceCallError: Error, Equatable {
     case quotaExceeded
@@ -116,6 +139,7 @@ enum VoiceCallError: Error, Equatable {
             "maxDurationSeconds": resp.maxDurationSeconds,
         ]
 
+        audioSessionSnapshot("pre-start")
         do {
             _ = try await vapi.start(
                 assistantId: resp.assistantId,
@@ -123,9 +147,12 @@ enum VoiceCallError: Error, Equatable {
                 assistantOverrides: assistantOverrides
             )
             print("[VoiceCall] vapi.start() returned; awaiting .callDidStart")
+            voiceLog.error("vapi.start() returned; awaiting .callDidStart")
+            audioSessionSnapshot("post-start")
             startConnectWatchdog()
         } catch {
             print("[VoiceCall] vapi.start() threw: \(error)")
+            voiceLog.error("vapi.start() threw: \(String(describing: error), privacy: .public)")
             self.error = error
             callState = .ended
             cleanup()
@@ -188,10 +215,20 @@ enum VoiceCallError: Error, Equatable {
         case .callDidStart:
             connectTimeoutTask?.cancel()
             print("[VoiceCall] .callDidStart")
+            voiceLog.error(".callDidStart")
+            audioSessionSnapshot("call-active")
+            // Snapshot again a few seconds in: VAPI kills no-audio calls ~15s after join,
+            // so this captures the session state right in the window that matters.
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(5))
+                audioSessionSnapshot("call-active+5s")
+            }
             callState = .active
         case .callDidEnd:
             connectTimeoutTask?.cancel()
             print("[VoiceCall] .callDidEnd")
+            voiceLog.error(".callDidEnd")
+            audioSessionSnapshot("call-ended")
             callState = .ended
             cleanup()
         case .transcript(let t):
@@ -199,6 +236,8 @@ enum VoiceCallError: Error, Equatable {
         case .error(let e):
             connectTimeoutTask?.cancel()
             print("[VoiceCall] .error event: \(e)")
+            voiceLog.error(".error event: \(String(describing: e), privacy: .public)")
+            audioSessionSnapshot("call-error")
             error = e
             callState = .ended
             cleanup()

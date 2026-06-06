@@ -23,9 +23,13 @@ packages:
   RevenueCat:
     url: https://github.com/RevenueCat/purchases-ios
     from: "4.0.0"
+  # Vendored copy of https://github.com/VapiAI/client-sdk-ios @ 5fdb73d (main, 2026-03-11)
+  # with one local fix: ArtifactPlan.videoRecordingEnabled made optional — VAPI's
+  # /call/web response stopped sending it (~2026-06-03), which broke every call with a
+  # decoding error before the room join (surfaced as a bogus "mic not enabled" alert).
+  # Switch back to the upstream URL once their PR #40 is merged.
   Vapi:
-    url: https://github.com/VapiAI/ios
-    branch: main
+    path: Vendor/vapi-sdk
 schemes:
   LiveCoach:
     build:
