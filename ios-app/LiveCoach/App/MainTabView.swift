@@ -55,9 +55,13 @@ struct MainTabView: View {
                             }
                         }
                     }
-                    .environment(sessionService)
-                    .environment(subscriptionService)
                 }
+                // On the NavigationStack (not the TabView): views pushed onto the stack
+                // resolve their environment from the stack's scope, so injecting these on
+                // the TabView leaves pushed destinations (e.g. DayDetailView) without them
+                // — @Environment(SubscriptionService.self) then crashes on first access.
+                .environment(sessionService)
+                .environment(subscriptionService)
                 .preferredColorScheme(.dark)
             }
         }

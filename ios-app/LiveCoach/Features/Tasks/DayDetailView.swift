@@ -57,10 +57,18 @@ import SwiftUI
 /// A single day: its (unbounded) tasks with manual add/edit/delete, the day's score +
 /// summary + coach advice, and the calls that happened that day (each opens its detail).
 struct DayDetailView: View {
+    @Environment(AppState.self) private var appState
+    @Environment(SubscriptionService.self) private var subscriptionService
     @State private var vm: DayDetailViewModel
     @State private var chatService = ChatService()
     @State private var renameTarget: DayTask?
     @State private var renameText = ""
+
+    // Starting a call from the day view reuses the exact flow CallsView uses.
+    @State private var voiceCallService = VoiceCallService()
+    @State private var showVoiceCall = false
+    @State private var selectedCallType: CoachCallType = .free
+    @State private var showPaywall = false
 
     private let isToday: Bool
 
@@ -72,6 +80,7 @@ struct DayDetailView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
+                if isToday { checkInCard }
                 tasksCard
                 scoreCard
                 callsCard
@@ -83,6 +92,16 @@ struct DayDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task { await vm.load() }
         .refreshable { await vm.load() }
+        .navigationDestination(isPresented: $showVoiceCall) {
+            VoiceCallView(callType: selectedCallType, voiceCallService: voiceCallService)
+        }
+        .sheet(isPresented: $showPaywall) {
+            SubscriptionPaywallView(subscriptionService: subscriptionService)
+        }
+        // A call ended and we returned here: pull the new conversation into the list.
+        .onChange(of: showVoiceCall) { _, isShowing in
+            if !isShowing { Task { await vm.load() } }
+        }
         .alert("Rename task", isPresented: Binding(
             get: { renameTarget != nil },
             set: { if !$0 { renameTarget = nil } }
@@ -94,6 +113,47 @@ struct DayDetailView: View {
                 renameTarget = nil
             }
         }
+    }
+
+    // MARK: - Check in (today only)
+
+    private var checkInCard: some View {
+        LCCard {
+            VStack(alignment: .leading, spacing: 12) {
+                LCSectionLabel(title: "Start a check-in")
+                HStack(spacing: 10) {
+                    checkInButton(.midday, label: "Midday", icon: "sun.max.fill")
+                    checkInButton(.evening, label: "Evening", icon: "moon.stars.fill")
+                    checkInButton(.free, label: "Free call", icon: "mic.fill")
+                }
+            }
+        }
+    }
+
+    private func checkInButton(_ type: CoachCallType, label: String, icon: String) -> some View {
+        Button {
+            // Gate before navigating so non-subscribers see the paywall, never a
+            // dead call screen. Mirrors NewConversationSheet.
+            guard appState.hasActivePlan else { showPaywall = true; return }
+            selectedCallType = type
+            showVoiceCall = true
+        } label: {
+            VStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 20))
+                    .foregroundStyle(Color.lcAccent)
+                Text(label)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Color.lcText)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(Color.lcAccentSofter)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Tasks
