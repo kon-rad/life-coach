@@ -29,6 +29,15 @@ export interface PromptTask {
   isCompleted: boolean;
 }
 
+/** A long-term goal as injected into the prompt (id is not needed by the coach). */
+export interface PromptGoal {
+  title: string;
+  /** May be empty. */
+  description: string;
+  /** ISO yyyy-MM-dd, or empty when no target date. */
+  dueDate: string;
+}
+
 export interface CallPromptContext {
   profile: UserProfile;
   /** Current week's 3 tasks (with ids + done state). */
@@ -40,6 +49,8 @@ export interface CallPromptContext {
   todayTasks: PromptTask[];
   /** Human-readable recent history (last 7 days completion + scores). */
   recentHistory: string;
+  /** The user's top long-term goals (up to 3). Omitted from the prompt when empty. */
+  goals?: PromptGoal[];
   /**
    * True when this is the user's very first session (no weeks exist yet). Only the
    * weekly prompt branches on it: instead of retro-ing a past week, it welcomes the
@@ -106,6 +117,27 @@ function formatTasks(tasks: PromptTask[]): string {
     .join('\n');
 }
 
+/**
+ * Renders the user's long-term goals as a prompt block, or '' when there are none
+ * (so the section disappears entirely rather than leaving an empty header). Always
+ * returns a trailing blank line when non-empty, so callers can interpolate it
+ * inline between other sections.
+ */
+function formatGoalsSection(goals?: PromptGoal[]): string {
+  if (!goals || goals.length === 0) return '';
+  const lines = goals
+    .map((g, i) => {
+      const due = g.dueDate ? ` (target: ${g.dueDate})` : '';
+      const desc = g.description ? ` — ${g.description}` : '';
+      return `${i + 1}. ${g.title}${due}${desc}`;
+    })
+    .join('\n');
+  return (
+    `The user's top long-term goals:\n${lines}\n` +
+    `Connect this week's and today's tasks back to these goals where it helps.\n\n`
+  );
+}
+
 const VOICE_RULES =
   'Keep responses under 100 words. Ask one question at a time. Be direct — no filler ' +
   'phrases like "Absolutely!" or "Great question!". Today\'s date and time are available ' +
@@ -131,6 +163,7 @@ export function buildMiddayPrompt(ctx: CallPromptContext): string {
   return (
     `You are a warm, direct life coach running a midday check-in. ${buildPersona(ctx.profile)}\n\n` +
     `This is week ${ctx.weekNumber} (${ctx.weekStartDate} → ${ctx.weekEndDate}).\n` +
+    formatGoalsSection(ctx.goals) +
     `The 3 tasks for this week are:\n${formatTasks(ctx.weekTasks)}\n\n` +
     `Today's 3 tasks are:\n${formatTasks(ctx.todayTasks)}\n\n` +
     `Recent history (last 7 days):\n${ctx.recentHistory}\n\n` +
@@ -149,6 +182,7 @@ export function buildEveningPrompt(ctx: CallPromptContext): string {
   return (
     `You are a warm, direct life coach running an evening debrief. ${buildPersona(ctx.profile)}\n\n` +
     `This is week ${ctx.weekNumber} (${ctx.weekStartDate} → ${ctx.weekEndDate}).\n` +
+    formatGoalsSection(ctx.goals) +
     `The 3 tasks for this week are:\n${formatTasks(ctx.weekTasks)}\n\n` +
     `Today's 3 tasks are:\n${formatTasks(ctx.todayTasks)}\n\n` +
     `Recent history (last 7 days):\n${ctx.recentHistory}\n\n` +
@@ -172,6 +206,7 @@ export function buildWeeklyPrompt(ctx: CallPromptContext): string {
       `You are a warm, direct life coach, and this is your FIRST SESSION with ${ctx.profile.name || 'this person'} — ` +
       `the very start of you working together. ${buildPersona(ctx.profile)}\n\n` +
       `This is week ${ctx.weekNumber} (${ctx.weekStartDate} → ${ctx.weekEndDate}).\n\n` +
+      formatGoalsSection(ctx.goals) +
       `Your job for this first session:\n` +
       `1. Warmly welcome them and briefly explain how this works: every week you set 3 meaningful tasks together, ` +
       `with short daily check-ins to keep momentum, and a weekly review.\n` +
@@ -185,6 +220,7 @@ export function buildWeeklyPrompt(ctx: CallPromptContext): string {
   return (
     `You are a warm, direct life coach running the weekly planning + retrospective meeting. ${buildPersona(ctx.profile)}\n\n` +
     `The week that is ending is week ${ctx.weekNumber} (${ctx.weekStartDate} → ${ctx.weekEndDate}).\n` +
+    formatGoalsSection(ctx.goals) +
     `Its 3 tasks were:\n${formatTasks(ctx.weekTasks)}\n\n` +
     `This week's daily history:\n${ctx.recentHistory}\n\n` +
     `Run the meeting in two parts:\n\n` +
@@ -206,6 +242,7 @@ export function buildFreePrompt(ctx: CallPromptContext): string {
   return (
     `You are a warm, direct, results-oriented life coach. ${buildPersona(ctx.profile)}\n\n` +
     `This is week ${ctx.weekNumber} (${ctx.weekStartDate} → ${ctx.weekEndDate}).\n` +
+    formatGoalsSection(ctx.goals) +
     `The 3 tasks for this week are:\n${formatTasks(ctx.weekTasks)}\n\n` +
     `Today's 3 tasks are:\n${formatTasks(ctx.todayTasks)}\n\n` +
     `Recent history (last 7 days):\n${ctx.recentHistory}\n\n` +

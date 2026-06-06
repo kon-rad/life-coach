@@ -130,6 +130,29 @@ describe('POST /vapi/init-call', () => {
     expect(res.body.maxDurationSeconds).toBe(900);
   });
 
+  it('injects the user long-term goals into the system prompt', async () => {
+    db.get
+      .mockResolvedValueOnce({
+        exists: true,
+        data: () => ({
+          weeklyVoiceQuotaSeconds: 3900,
+          voiceSecondsUsedThisWeek: 0,
+          goals: `enc(${JSON.stringify([
+            { id: 'g1', title: 'Ship the app', description: '', dueDate: '2026-09-01' },
+          ])})`,
+        }),
+      }) // quota gate (also the source of goals)
+      .mockResolvedValueOnce({ exists: false }) // profile
+      .mockResolvedValueOnce({ exists: false }) // current week
+      .mockResolvedValueOnce({ exists: false }) // today session
+      .mockResolvedValueOnce({ docs: [] });     // history
+    const res = await request(app).post('/vapi/init-call')
+      .set('Authorization', 'Bearer t').send({ callType: 'midday' });
+    expect(res.status).toBe(200);
+    expect(res.body.systemPrompt).toMatch(/Ship the app/);
+    expect(res.body.systemPrompt).toMatch(/2026-09-01/);
+  });
+
   it('weekly first session (no weeks yet) produces a first-session prompt', async () => {
     db.get
       .mockResolvedValueOnce({ exists: false })      // quota gate

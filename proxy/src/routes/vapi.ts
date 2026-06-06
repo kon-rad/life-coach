@@ -7,7 +7,7 @@ import { weekId as computeWeekId, weekRange } from '../services/weeks';
 import { usedSecondsThisWeek, VoiceUsageDoc } from '../services/voiceUsage';
 import {
   buildMiddayPrompt, buildEveningPrompt, buildWeeklyPrompt, buildFreePrompt,
-  UserProfile, CoachingStyle, PromptTask, CallPromptContext,
+  UserProfile, CoachingStyle, PromptTask, PromptGoal, CallPromptContext,
 } from '../prompts';
 
 const router = Router();
@@ -57,6 +57,22 @@ async function getUserProfile(uid: string): Promise<UserProfile> {
 
 function toPromptTasks(tasks: Task[]): PromptTask[] {
   return tasks.map((t) => ({ id: t.id, title: t.title, isCompleted: t.isCompleted }));
+}
+
+interface StoredGoal { title?: string; description?: string; dueDate?: string; }
+
+/** Decrypts the user's goals (stored on the user doc) into prompt-ready goals. */
+async function getGoals(rawGoals: string | undefined): Promise<PromptGoal[]> {
+  if (!rawGoals) return [];
+  const stored = await decryptJSON<StoredGoal[]>(rawGoals);
+  if (!Array.isArray(stored)) return [];
+  return stored
+    .filter((g) => typeof g?.title === 'string' && g.title.trim() !== '')
+    .map((g) => ({
+      title: g.title as string,
+      description: g.description ?? '',
+      dueDate: g.dueDate ?? '',
+    }));
 }
 
 async function getCurrentWeek(uid: string) {
@@ -117,7 +133,10 @@ router.post('/init-call', async (req, res: Response) => {
   try {
     // Weekly voice-quota gate: block before doing any work if the user is out of minutes.
     const userSnap = await db.collection('users').doc(uid).get();
-    const userData = (userSnap.exists ? userSnap.data() : {}) as VoiceUsageDoc & { weeklyVoiceQuotaSeconds?: number };
+    const userData = (userSnap.exists ? userSnap.data() : {}) as VoiceUsageDoc & {
+      weeklyVoiceQuotaSeconds?: number;
+      goals?: string;
+    };
     const quotaSeconds = userData.weeklyVoiceQuotaSeconds ?? DEFAULT_WEEKLY_QUOTA_SECONDS;
     const usedSeconds = usedSecondsThisWeek(uid, userData, new Date());
     const remainingSeconds = Math.max(0, quotaSeconds - usedSeconds);
@@ -126,8 +145,10 @@ router.post('/init-call', async (req, res: Response) => {
       return;
     }
 
-    const [profile, week, todayTasks, recentHistory] = await Promise.all([
+    const [profile, week, todayTasks, recentHistory, goals] = await Promise.all([
       getUserProfile(uid), getCurrentWeek(uid), getTodayTasks(uid), getRecentHistory(uid),
+      // Reuse the user doc already fetched for the quota gate — no extra Firestore read.
+      getGoals(userData.goals),
     ]);
     // Only the weekly prompt branches on first-session; avoid the extra read otherwise.
     const firstSession = type === 'weekly' ? await isFirstSession(uid) : false;
@@ -135,7 +156,7 @@ router.post('/init-call', async (req, res: Response) => {
       profile,
       weekTasks: week.tasks, weekNumber: week.weekNumber,
       weekStartDate: week.startDate, weekEndDate: week.endDate,
-      todayTasks, recentHistory, isFirstSession: firstSession,
+      todayTasks, recentHistory, goals, isFirstSession: firstSession,
     };
     let systemPrompt: string;
     if (type === 'midday') systemPrompt = buildMiddayPrompt(ctx);

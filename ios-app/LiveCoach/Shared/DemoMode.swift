@@ -45,6 +45,12 @@ enum DemoMode {
         createdAt: Date()
     )
 
+    static let goals: [Goal] = [
+        Goal(id: "g1", title: "Launch my coaching business", description: "Replace my salary with client revenue.", dueDate: "2026-12-31"),
+        Goal(id: "g2", title: "Run a half marathon", description: "Build a consistent running habit.", dueDate: "2026-10-15"),
+        Goal(id: "g3", title: "Read 12 books this year", description: "", dueDate: "")
+    ]
+
     static let userStats = UserStats(
         currentStreak: 14,
         totalDaysComplete: 28,

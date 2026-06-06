@@ -290,6 +290,84 @@ describe('PUT /user/profile', () => {
   });
 });
 
+// ─── /user/goals ──────────────────────────────────────────────────────────────
+
+describe('GET /user/goals', () => {
+  it('returns the decrypted, normalized goals', async () => {
+    db.get.mockResolvedValueOnce({
+      exists: true,
+      data: () => ({
+        goals: `enc(${JSON.stringify([
+          { id: 'g1', title: 'Run a marathon', description: 'sub-4h', dueDate: '2026-12-01' },
+        ])})`,
+      }),
+    });
+
+    const res = await request(app)
+      .get('/user/goals')
+      .set('Authorization', `Bearer ${VALID_TOKEN}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.goals).toHaveLength(1);
+    expect(res.body.goals[0].title).toBe('Run a marathon');
+    expect(res.body.goals[0].dueDate).toBe('2026-12-01');
+  });
+
+  it('returns an empty array when the user has no goals', async () => {
+    db.get.mockResolvedValueOnce({ exists: true, data: () => ({}) });
+
+    const res = await request(app)
+      .get('/user/goals')
+      .set('Authorization', `Bearer ${VALID_TOKEN}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.goals).toEqual([]);
+  });
+});
+
+describe('PUT /user/goals', () => {
+  it('drops empty-title rows, caps at 3, and persists the normalized set encrypted', async () => {
+    const res = await request(app)
+      .put('/user/goals')
+      .set('Authorization', `Bearer ${VALID_TOKEN}`)
+      .send({
+        goals: [
+          { title: '  Get healthy  ', description: 'gym 3x', dueDate: '2026-09-01' },
+          { title: '', description: 'should be dropped', dueDate: '' },
+          { title: 'Learn Spanish' },
+          { title: 'Save money', dueDate: 'not-a-date' },
+          { title: 'A fourth goal beyond the cap' },
+        ],
+      });
+
+    expect(res.status).toBe(200);
+    // 5 sent, 1 empty-title dropped, capped to 3.
+    expect(res.body.goals).toHaveLength(3);
+    expect(res.body.goals[0].title).toBe('Get healthy'); // trimmed
+    expect(res.body.goals[0].id).toBeTruthy();           // id assigned
+    expect(res.body.goals[1].title).toBe('Learn Spanish');
+    expect(res.body.goals[1].description).toBe('');      // defaulted
+    expect(res.body.goals[2].title).toBe('Save money');
+    expect(res.body.goals[2].dueDate).toBe('');          // invalid date coerced
+
+    expect(db.set).toHaveBeenCalledTimes(1);
+    const [setData, opts] = db.set.mock.calls[0] as [{ goals: string }, unknown];
+    expect(setData.goals).toContain('Get healthy');
+    expect(opts).toEqual({ merge: true });
+  });
+
+  it('accepts an empty goals list (clears all goals)', async () => {
+    const res = await request(app)
+      .put('/user/goals')
+      .set('Authorization', `Bearer ${VALID_TOKEN}`)
+      .send({ goals: [] });
+
+    expect(res.status).toBe(200);
+    expect(res.body.goals).toEqual([]);
+    expect(db.set).toHaveBeenCalledTimes(1);
+  });
+});
+
 // ─── GET /user/stats — streak ─────────────────────────────────────────────────
 
 describe('GET /user/stats — streak', () => {

@@ -1,3 +1,4 @@
+import * as crypto from 'crypto';
 import { Router, Response } from 'express';
 import { db } from '../services/firebase';
 import { encrypt, decrypt, encryptJSON, decryptJSON } from '../services/encryption';
@@ -45,6 +46,47 @@ interface UserDoc {
   couponCode?: string;
   couponRedeemedAt?: string;
   fcmToken?: string;
+  /** Encrypted JSON array of the user's up-to-3 long-term goals. */
+  goals?: string;
+}
+
+// ─── Long-term goals ──────────────────────────────────────────────────────────
+
+/** A user's long-term goal. description/dueDate are '' when unset (never absent). */
+interface Goal {
+  id: string;
+  title: string;
+  description: string;
+  dueDate: string;
+}
+
+const MAX_GOALS = 3;
+const GOAL_TITLE_MAX = 120;
+const GOAL_DESC_MAX = 500;
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Coerces arbitrary input into a clean, capped Goal[]: drops non-objects and
+ * empty-title rows, trims + length-caps strings, validates dueDate as yyyy-MM-dd
+ * (else ''), assigns an id where missing, and limits to MAX_GOALS. Run on both
+ * write and read so legacy/garbled data can never reach the client or the prompt.
+ */
+function normalizeGoals(input: unknown): Goal[] {
+  if (!Array.isArray(input)) return [];
+  const out: Goal[] = [];
+  for (const raw of input) {
+    if (!raw || typeof raw !== 'object') continue;
+    const g = raw as Record<string, unknown>;
+    const title = typeof g.title === 'string' ? g.title.trim().slice(0, GOAL_TITLE_MAX) : '';
+    if (!title) continue;
+    const description =
+      typeof g.description === 'string' ? g.description.trim().slice(0, GOAL_DESC_MAX) : '';
+    const dueDate = typeof g.dueDate === 'string' && ISO_DATE.test(g.dueDate) ? g.dueDate : '';
+    const id = typeof g.id === 'string' && g.id ? g.id : crypto.randomUUID();
+    out.push({ id, title, description, dueDate });
+    if (out.length >= MAX_GOALS) break;
+  }
+  return out;
 }
 
 // Promo codes that grant a permanent Premium subscription. Each account may
@@ -203,6 +245,37 @@ router.put('/profile', async (req, res: Response) => {
     await db.collection('users').doc(uid).set(update, { merge: true });
     res.json({ updated: true });
   } catch {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─── Long-term goals (up to 3) ────────────────────────────────────────────────
+
+router.get('/goals', async (req, res: Response) => {
+  const uid = (req as AuthedRequest).uid;
+  try {
+    const doc = await db.collection('users').doc(uid).get();
+    const data = doc.exists ? (doc.data() as UserDoc) : {};
+    const stored = data.goals ? await decryptJSON<unknown>(data.goals) : [];
+    res.json({ goals: normalizeGoals(stored) });
+  } catch (err) {
+    console.error('[GET /user/goals] failed for uid', uid, err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.put('/goals', async (req, res: Response) => {
+  const uid = (req as AuthedRequest).uid;
+  const { goals } = req.body as { goals?: unknown };
+  const normalized = normalizeGoals(goals);
+  try {
+    await db.collection('users').doc(uid).set(
+      { goals: await encryptJSON(normalized) },
+      { merge: true },
+    );
+    res.json({ goals: normalized });
+  } catch (err) {
+    console.error('[PUT /user/goals] failed for uid', uid, err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

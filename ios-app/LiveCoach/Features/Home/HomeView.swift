@@ -7,6 +7,7 @@ struct HomeView: View {
     @State private var viewModel: HomeViewModel?
     @State private var showVoiceCall = false
     @State private var showPaywall = false
+    @State private var showGoalsEditor = false
     @State private var voiceCallService = VoiceCallService()
 
     private var isMorning: Bool { Calendar.current.component(.hour, from: Date()) < 12 }
@@ -25,6 +26,7 @@ struct HomeView: View {
                 if let vm = viewModel {
                     greetingSection
                     scoreCard(vm: vm)
+                    goalsCard(vm: vm)
                     callCTACard(vm: vm)
                     weekTasksCard(vm: vm)
                     dayTasksCard(vm: vm)
@@ -56,6 +58,99 @@ struct HomeView: View {
         .sheet(isPresented: $showPaywall) {
             SubscriptionPaywallView(subscriptionService: subscriptionService)
         }
+        .sheet(isPresented: $showGoalsEditor) {
+            if let vm = viewModel {
+                GoalsEditorView(initialGoals: vm.goals) { newGoals in
+                    await vm.saveGoals(newGoals)
+                }
+            }
+        }
+    }
+
+    // MARK: - Goals
+
+    private func goalsCard(vm: HomeViewModel) -> some View {
+        LCCard(padding: 0) {
+            Button {
+                showGoalsEditor = true
+            } label: {
+                VStack(spacing: 0) {
+                    HStack {
+                        LCSectionLabel(title: "Goals").padding(0)
+                        Spacer()
+                        Image(systemName: vm.goals.isEmpty ? "plus.circle" : "pencil")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Color.lcTextFaint)
+                    }
+                    .padding(.top, 16)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 4)
+
+                    if vm.goals.isEmpty {
+                        HStack {
+                            Text("Create your goals")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundStyle(Color.lcAccent)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 16)
+                    } else {
+                        ForEach(Array(vm.goals.enumerated()), id: \.element.id) { idx, goal in
+                            goalRow(goal: goal, isLast: idx == vm.goals.count - 1)
+                        }
+                        .padding(.bottom, 4)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private func goalRow(goal: Goal, isLast: Bool) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "target")
+                .font(.system(size: 14))
+                .foregroundStyle(Color.lcAccent)
+                .padding(.top, 2)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(goal.title)
+                    .font(.system(size: 15))
+                    .foregroundStyle(Color.lcText)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                if !goal.dueDate.isEmpty {
+                    Text(Self.goalDueLabel(goal.dueDate))
+                        .font(.system(size: 12))
+                        .foregroundStyle(Color.lcTextFaint)
+                }
+            }
+        }
+        .padding(.vertical, 12)
+        .padding(.horizontal, 20)
+        .overlay(alignment: .bottom) {
+            if !isLast { Color.lcHairline.frame(height: 0.5).padding(.leading, 20) }
+        }
+    }
+
+    private static let dueInputFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.timeZone = TimeZone(identifier: "UTC")
+        return f
+    }()
+
+    private static let dueOutputFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "MMM d, yyyy"
+        return f
+    }()
+
+    /// "2026-12-31" → "Due Dec 31, 2026" (falls back to the raw string if unparseable).
+    private static func goalDueLabel(_ iso: String) -> String {
+        guard let date = dueInputFormatter.date(from: iso) else { return iso }
+        return "Due " + dueOutputFormatter.string(from: date)
     }
 
     // MARK: - Greeting

@@ -1,4 +1,4 @@
-import { buildWeeklyPrompt, CallPromptContext } from '../prompts';
+import { buildWeeklyPrompt, buildEveningPrompt, CallPromptContext } from '../prompts';
 
 const base: CallPromptContext = {
   profile: { name: 'Ada', bio: '', coachingStyle: 'balanced', occupation: '', motivation: '' },
@@ -25,5 +25,36 @@ describe('buildWeeklyPrompt', () => {
     expect(p).toMatch(/retrospective/i);
     expect(p).toMatch(/upcoming week/i);
     expect(p).toMatch(/set_week_tasks/);
+  });
+});
+
+describe('long-term goals injection', () => {
+  it('includes the goals (with target dates) when provided', () => {
+    const p = buildEveningPrompt({
+      ...base,
+      goals: [
+        { title: 'Run a marathon', description: 'sub-4 hours', dueDate: '2026-12-01' },
+        { title: 'Ship the app', description: '', dueDate: '' },
+      ],
+    });
+    expect(p).toMatch(/long-term goals/i);
+    expect(p).toMatch(/Run a marathon/);
+    expect(p).toMatch(/sub-4 hours/);
+    expect(p).toMatch(/2026-12-01/);
+    expect(p).toMatch(/Ship the app/);
+  });
+
+  it('omits the goals section entirely when there are none', () => {
+    expect(buildEveningPrompt({ ...base })).not.toMatch(/long-term goals/i);
+    expect(buildEveningPrompt({ ...base, goals: [] })).not.toMatch(/long-term goals/i);
+  });
+
+  it('also injects goals into the weekly first-session prompt', () => {
+    const p = buildWeeklyPrompt({
+      ...base,
+      isFirstSession: true,
+      goals: [{ title: 'Get healthy', description: '', dueDate: '' }],
+    });
+    expect(p).toMatch(/Get healthy/);
   });
 });

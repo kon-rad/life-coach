@@ -6,12 +6,15 @@ import Foundation
     var userStats: UserStats?
     /// Sessions for the current week (used for the week-so-far average + last day's score).
     var weekSessions: [DailySession] = []
+    /// The user's up-to-3 long-term goals, shown under the score card.
+    var goals: [Goal] = []
     var dailyQuote: String = ""
     var isLoading = false
     var error: Error?
 
     private let sessionService: SessionService
     private let weekService: WeekService
+    private let goalService = GoalService()
     private let api = ProxyAPIClient.shared
     private let appState: AppState?
 
@@ -30,11 +33,14 @@ import Foundation
             todaySession = DemoMode.todaySession
             userStats = DemoMode.userStats
             weekSessions = [DemoMode.todaySession]
+            goals = DemoMode.goals
             return
         }
         await sessionService.loadToday()
         todaySession = sessionService.todaySession
         await weekService.load()
+        await goalService.load()
+        goals = goalService.goals
         // Load the current week's sessions for the home score card (week avg + last day).
         if let week = weekService.currentWeek {
             weekSessions = (try? await sessionService.loadHistory(
@@ -61,6 +67,15 @@ import Foundation
                 isCompleted: isCompleted
             )
             todaySession = sessionService.todaySession
+        } catch {
+            self.error = error
+        }
+    }
+
+    /// Persists the edited goal set and reflects the server-normalized result.
+    func saveGoals(_ newGoals: [Goal]) async {
+        do {
+            goals = try await goalService.save(newGoals)
         } catch {
             self.error = error
         }
