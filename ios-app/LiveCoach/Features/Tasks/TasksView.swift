@@ -8,6 +8,7 @@ struct TasksView: View {
     @State private var retrospectiveService = RetrospectiveService()
     @State private var sessions: [DailySession] = []
     @State private var selectedWeekId: String?
+    @State private var isReviewExpanded = false
     private let api = ProxyAPIClient.shared
 
     var body: some View {
@@ -147,30 +148,46 @@ struct TasksView: View {
     private func retrospectiveCard(_ retro: Retrospective) -> some View {
         LCCard {
             VStack(alignment: .leading, spacing: 10) {
-                LCSectionLabel(title: "Weekly review")
-                if !retro.summary.isEmpty {
-                    Text(retro.summary)
-                        .font(.system(size: 13.5))
-                        .foregroundStyle(Color.lcTextDim)
-                        .fixedSize(horizontal: false, vertical: true)
+                // Collapsible header — the review is collapsed by default.
+                Button {
+                    withAnimation(.snappy(duration: 0.25)) { isReviewExpanded.toggle() }
+                } label: {
+                    HStack(spacing: 8) {
+                        LCSectionLabel(title: "Weekly review")
+                        Spacer()
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Color.lcTextFaint)
+                            .rotationEffect(.degrees(isReviewExpanded ? 0 : -90))
+                    }
+                    .contentShape(Rectangle())
                 }
-                retroLine(icon: "checkmark.circle.fill", color: .lcGreen, title: "Went well", body: retro.wentWell)
-                retroLine(icon: "arrow.triangle.2.circlepath", color: .lcAmber, title: "To improve", body: retro.improve)
-                if !retro.onePercent.isEmpty {
-                    HStack(alignment: .top, spacing: 8) {
-                        Image(systemName: "arrow.up.right.circle.fill")
-                            .font(.system(size: 14))
-                            .foregroundStyle(Color.lcAccent)
-                            .padding(.top, 1)
-                        Text(retro.onePercent)
-                            .font(.system(size: 13.5, weight: .medium))
-                            .foregroundStyle(Color.lcText)
+                .buttonStyle(.plain)
+                if isReviewExpanded {
+                    if !retro.summary.isEmpty {
+                        Text(retro.summary)
+                            .font(.system(size: 13.5))
+                            .foregroundStyle(Color.lcTextDim)
                             .fixedSize(horizontal: false, vertical: true)
                     }
-                    .padding(10)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.lcAccentSofter)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    retroLine(icon: "checkmark.circle.fill", color: .lcGreen, title: "Went well", body: retro.wentWell)
+                    retroLine(icon: "arrow.triangle.2.circlepath", color: .lcAmber, title: "To improve", body: retro.improve)
+                    if !retro.onePercent.isEmpty {
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: "arrow.up.right.circle.fill")
+                                .font(.system(size: 14))
+                                .foregroundStyle(Color.lcAccent)
+                                .padding(.top, 1)
+                            Text(retro.onePercent)
+                                .font(.system(size: 13.5, weight: .medium))
+                                .foregroundStyle(Color.lcText)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .padding(10)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.lcAccentSofter)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
                 }
             }
         }
